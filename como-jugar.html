@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cómo llenar tu quiniela · Grupo Hogar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:oklch(0.975 0.006 80); --card:#fff; --ink:oklch(0.20 0.02 270);
+    --ink-soft:oklch(0.44 0.02 270); --ink-faint:oklch(0.60 0.015 270);
+    --line:oklch(0.90 0.008 270); --gold:oklch(0.78 0.14 85); --gold-deep:oklch(0.62 0.13 75);
+    --brand:oklch(0.58 0.17 152); --brand-ink:oklch(0.34 0.10 152);
+    --fd:"Archivo",system-ui,sans-serif; --fb:"Hanken Grotesk",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:oklch(0.945 0.008 80);font-family:var(--fb);color:var(--ink);-webkit-font-smoothing:antialiased;padding:26px 16px;}
+  .sheet{max-width:720px;margin:0 auto;background:var(--paper);border-radius:22px;overflow:hidden;box-shadow:0 12px 40px oklch(0.2 0.02 270/0.12);}
+  .colorbar{display:flex;height:8px;}
+  .colorbar span{flex:1;}
+  .head{background:var(--ink);color:var(--paper);padding:26px 30px 30px;position:relative;overflow:hidden;}
+  .head::before{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,oklch(1 0 0/0.04) 0 1px,transparent 1px 34px);}
+  .head>*{position:relative;}
+  .badge{display:inline-block;font-family:var(--fd);font-weight:800;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink);background:var(--gold);padding:5px 11px 4px;border-radius:999px;}
+  h1{font-family:var(--fd);font-weight:800;letter-spacing:-.02em;font-size:34px;line-height:1.02;margin:16px 0 8px;text-transform:uppercase;}
+  h1 em{font-style:normal;color:var(--gold);}
+  .url{font-family:var(--fd);font-weight:700;font-size:13.5px;color:var(--paper);background:oklch(1 0 0/0.12);border:1px solid oklch(1 0 0/0.18);padding:8px 13px;border-radius:10px;display:inline-block;word-break:break-all;}
+  .url .lbl{color:oklch(0.82 0.02 270);font-weight:600;}
+  .steps{padding:24px 30px 8px;}
+  .step{display:grid;grid-template-columns:54px 1fr;gap:18px;align-items:start;padding:16px 0;border-bottom:1px solid var(--line);}
+  .step:last-child{border-bottom:none;}
+  .n{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-family:var(--fd);font-weight:800;font-size:22px;}
+  .st h3{font-family:var(--fd);font-weight:800;font-size:18px;margin:4px 0 5px;letter-spacing:-.01em;}
+  .st p{margin:0;font-size:14.5px;color:var(--ink-soft);line-height:1.5;text-wrap:pretty;}
+  .st p b{color:var(--ink);}
+  .tag{display:inline-block;font-family:var(--fd);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);background:#fff;border:1px solid var(--line);padding:3px 8px;border-radius:7px;margin-top:7px;}
+  .tip{margin:14px 30px 0;background:oklch(0.96 0.03 152);border:1px solid var(--brand);border-radius:14px;padding:15px 18px;display:flex;gap:13px;align-items:flex-start;}
+  .tip .ic{font-size:22px;line-height:1;}
+  .tip .tt{font-family:var(--fd);font-weight:800;color:var(--brand-ink);font-size:15px;margin-bottom:2px;}
+  .tip p{margin:0;font-size:13.5px;color:var(--brand-ink);line-height:1.5;}
+  .deadline{margin:14px 30px 0;background:oklch(0.97 0.04 85);border:1px solid var(--gold-deep);border-radius:14px;padding:13px 18px;font-size:14px;color:oklch(0.40 0.06 75);text-align:center;font-weight:600;}
+  .deadline b{font-family:var(--fd);font-weight:800;}
+  .foot{padding:20px 30px 28px;text-align:center;color:var(--ink-faint);font-size:12.5px;}
+  .foot .heart{color:oklch(0.62 0.2 25);}
+  @media (max-width:520px){
+    .head{padding:22px 20px 26px;} h1{font-size:27px;} .steps{padding:18px 20px 6px;}
+    .step{grid-template-columns:44px 1fr;gap:13px;} .n{width:40px;height:40px;font-size:18px;border-radius:12px;}
+    .tip,.deadline{margin-left:20px;margin-right:20px;}
+  }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="colorbar">
+      <span style="background:oklch(0.63 0.20 25)"></span><span style="background:oklch(0.68 0.18 55)"></span>
+      <span style="background:oklch(0.78 0.16 92)"></span><span style="background:oklch(0.72 0.18 132)"></span>
+      <span style="background:oklch(0.64 0.16 158)"></span><span style="background:oklch(0.70 0.12 200)"></span>
+      <span style="background:oklch(0.64 0.15 233)"></span><span style="background:oklch(0.56 0.18 268)"></span>
+      <span style="background:oklch(0.53 0.20 298)"></span><span style="background:oklch(0.56 0.20 328)"></span>
+      <span style="background:oklch(0.60 0.21 352)"></span><span style="background:oklch(0.62 0.19 12)"></span>
+    </div>
+
+    <div class="head">
+      <span class="badge">Grupo Hogar · Mundial 2026</span>
+      <h1>Cómo llenar<br /><em>tu quiniela</em></h1>
+      <span class="url"><span class="lbl">Abre esta liga 👉</span> esvalsecchi.github.io/quiniela-mundial</span>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n" style="background:oklch(0.63 0.20 25)">1</div>
+        <div class="st"><h3>Abre la liga</h3>
+          <p>Entra desde tu <b>celular o computadora</b>. No hay que instalar nada ni registrarse — solo abre el enlace.</p></div>
+      </div>
+      <div class="step">
+        <div class="n" style="background:oklch(0.68 0.18 55)">2</div>
+        <div class="st"><h3>Elige tu nombre</h3>
+          <p>Arriba verás a los 10 jugadores. <b>Toca tu nombre</b> (Abu George, Mia, Iker…). Todo lo que llenes se guarda con tu nombre.</p>
+          <span class="tag">Cada quien usa su propio aparato</span></div>
+      </div>
+      <div class="step">
+        <div class="n" style="background:oklch(0.64 0.16 158)">3</div>
+        <div class="st"><h3>Fase de Grupos</h3>
+          <p>En cada uno de los <b>12 grupos</b>, marca quién crees que queda <b>1.º</b> (gana el grupo) y <b>2.º</b>. Esos dos clasifican a la siguiente ronda.</p></div>
+      </div>
+      <div class="step">
+        <div class="n" style="background:oklch(0.64 0.15 233)">4</div>
+        <div class="st"><h3>Marcadores Estelares</h3>
+          <p>Escribe el <b>marcador exacto</b> que pronosticas para los 8 partidazos. Ejemplo: <b>México 2 – 1 Sudáfrica</b>.</p></div>
+      </div>
+      <div class="step">
+        <div class="n" style="background:oklch(0.53 0.20 298)">5</div>
+        <div class="st"><h3>Camino al Título</h3>
+          <p>Arma tu <b>bracket</b>: elige los 8 de cuartos de final, avanza a semifinales, la final… y corona a tu <b>Campeón del Mundo</b> 🏆.</p></div>
+      </div>
+      <div class="step">
+        <div class="n" style="background:oklch(0.60 0.21 352)">6</div>
+        <div class="st"><h3>¡Listo! Se guarda solo</h3>
+          <p>No hay botón de "enviar": todo se guarda automáticamente. Puedes <b>volver a editar</b> cuando quieras… hasta que arranque el Mundial.</p></div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="ic">🏆</span>
+      <div><div class="tt">Mira cómo vas en la pestaña “Tabla”</div>
+      <p>Cuando empiece el torneo y se carguen los resultados, los puntos se calculan solos y verás el ranking de toda la familia en vivo.</p></div>
+    </div>
+
+    <div class="deadline">⏰ Llena tu quiniela <b>antes del 11 de junio</b> — al arrancar el Mundial se cierra y ya no se puede editar.</div>
+
+    <div class="foot">Una porra del <b>Grupo Hogar</b> · Mundial 2026 — hecha en casa con <span class="heart">♥</span></div>
+  </div>
+</body>
+</html>
