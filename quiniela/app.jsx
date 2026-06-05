@@ -1,31 +1,52 @@
-/* Quiniela Mundial 2026 — App principal (con nube, tabla y admin) */
+/* Quiniela Mundial 2026 — App principal (formato real 2026) */
 const { useState, useEffect, useMemo } = React;
 const QM = window.QM;
 const ALL_CODES = Object.keys(QM.T);
+const CAPS = QM.KO_CAPS;
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
-  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
-  return (p[0][0] + p[1][0]).toUpperCase();
+  return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[1][0]).toUpperCase();
 }
-function blankBracket() { return { qf: Array(8).fill(null), sf: Array(4).fill(null), fin: Array(2).fill(null), champ: null, third: null }; }
-function blankPred() { return { groups: {}, scores: {}, bracket: blankBracket() }; }
-function qualifiedFrom(groups) {
-  const set = [];
-  QM.GROUPS.forEach((g) => {
-    const v = (groups || {})[g.id] || {};
-    [v.first, v.second].forEach((c) => { if (c && !set.includes(c)) set.push(c); });
-  });
-  return set;
+function blankKO() { return { r16: [], qf: [], sf: [], fin: [], champ: null, third: null }; }
+function blankPred() { return { groups: {}, thirds: [], scores: {}, ko: blankKO() }; }
+function withDefaults(p) {
+  p = p || {};
+  return {
+    groups: p.groups || {},
+    thirds: p.thirds || [],
+    scores: p.scores || {},
+    ko: Object.assign(blankKO(), p.ko || {}),
+  };
 }
-function cleanBracket(b) {
-  const qf = b.qf || Array(8).fill(null);
-  const sf = (b.sf || Array(4).fill(null)).map((s, i) => ([qf[2 * i], qf[2 * i + 1]].includes(s) ? s : null));
-  const fin = (b.fin || Array(2).fill(null)).map((f, i) => ([sf[2 * i], sf[2 * i + 1]].includes(f) ? f : null));
-  let champ = [fin[0], fin[1]].includes(b.champ) ? b.champ : null;
-  const thirdOpts = sf.filter((s) => s && !fin.includes(s));
-  let third = thirdOpts.includes(b.third) ? b.third : null;
-  return { qf, sf, fin, champ, third };
+function dedup(a) { return a.filter((x, i) => x && a.indexOf(x) === i); }
+
+function poolFrom(p) {
+  const direct = [];
+  QM.GROUPS.forEach((g) => { const v = (p.groups || {})[g.id] || {}; if (v.first) direct.push(v.first); if (v.second) direct.push(v.second); });
+  return dedup(direct.concat(p.thirds || []));
+}
+function cleanKO(ko, pool) {
+  ko = ko || {};
+  const r16 = (ko.r16 || []).filter((c) => pool.includes(c)).slice(0, CAPS.r16);
+  const qf = (ko.qf || []).filter((c) => r16.includes(c)).slice(0, CAPS.qf);
+  const sf = (ko.sf || []).filter((c) => qf.includes(c)).slice(0, CAPS.sf);
+  const fin = (ko.fin || []).filter((c) => sf.includes(c)).slice(0, CAPS.fin);
+  const champ = fin.includes(ko.champ) ? ko.champ : null;
+  const third = sf.filter((c) => !fin.includes(c)).includes(ko.third) ? ko.third : null;
+  return { r16, qf, sf, fin, champ, third };
+}
+function normalize(p) {
+  const validThirds = QM.GROUPS.map((g) => (p.groups[g.id] || {}).third).filter(Boolean);
+  p.thirds = (p.thirds || []).filter((c) => validThirds.includes(c)).slice(0, 8);
+  p.ko = cleanKO(p.ko, poolFrom(p));
+  return p;
+}
+function toggleInSet(arr, code, cap) {
+  arr = arr || [];
+  if (arr.includes(code)) return arr.filter((x) => x !== code);
+  if (arr.length >= cap) return arr;
+  return [...arr, code];
 }
 
 function App() {
@@ -46,9 +67,7 @@ function App() {
     return () => { if (unsub) unsub(); };
   }, []);
 
-  const pred = all[pid] || blankPred();
-
-  /* ---------- lock ---------- */
+  const pred = withDefaults(all[pid]);
   const lockMode = config && config.locked !== undefined ? config.locked : QM.CONFIG.locked;
   const lockedNow = lockMode != null ? lockMode : (Date.now() >= Date.parse(QM.CONFIG.lockAt));
 
@@ -56,30 +75,23 @@ function App() {
   function updatePlayer(mut) {
     if (lockedNow) return;
     setAll((prev) => {
-      const cur = prev[pid] ? JSON.parse(JSON.stringify(prev[pid])) : blankPred();
-      mut(cur);
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev[pid])));
+      mut(cur); normalize(cur);
       QMCloud.savePlayer(pid, cur);
       return { ...prev, [pid]: cur };
     });
   }
-  function pickGroup(gid, slot, code) {
-    updatePlayer((p) => {
-      const g = p.groups[gid] || {};
-      if (g[slot] === code) delete g[slot];
-      else { g[slot] = code; const other = slot === "first" ? "second" : "first"; if (g[other] === code) delete g[other]; }
-      p.groups[gid] = g;
-    });
-  }
-  function setScore(mid, k, val) {
-    updatePlayer((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
-  }
-  function setBracket(round, index, value) {
-    updatePlayer((p) => {
-      const b = { qf: [...(p.bracket.qf || Array(8).fill(null))], sf: [...(p.bracket.sf || Array(4).fill(null))], fin: [...(p.bracket.fin || Array(2).fill(null))], champ: p.bracket.champ, third: p.bracket.third };
-      if (round === "champ") b.champ = value; else if (round === "third") b.third = value; else b[round][index] = value;
-      p.bracket = cleanBracket(b);
-    });
-  }
+  const pickGroup = (gid, slot, code) => updatePlayer((p) => {
+    const g = p.groups[gid] || {};
+    if (g[slot] === code) delete g[slot];
+    else { ["first", "second", "third"].forEach((s) => { if (g[s] === code) delete g[s]; }); g[slot] = code; }
+    p.groups[gid] = g;
+  });
+  const toggleThird = (code) => updatePlayer((p) => { p.thirds = toggleInSet(p.thirds, code, 8); });
+  const setScore = (mid, k, val) => updatePlayer((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
+  const koToggle = (key, code) => updatePlayer((p) => { p.ko[key] = toggleInSet(p.ko[key], code, CAPS[key]); });
+  const koSingle = (key, code) => updatePlayer((p) => { p.ko[key] = p.ko[key] === code ? null : code; });
+
   function resetPlayer() {
     if (lockedNow) { alert("Los pronósticos están cerrados."); return; }
     if (!confirm(`¿Borrar los pronósticos de ${QM.PLAYERS.find((x) => x.id === pid).name}?`)) return;
@@ -91,34 +103,25 @@ function App() {
   /* ---------- mutaciones de resultados oficiales (admin) ---------- */
   function updateOfficial(mut) {
     setOfficial((prev) => {
-      const cur = JSON.parse(JSON.stringify(prev || {}));
-      cur.groups = cur.groups || {}; cur.scores = cur.scores || {}; cur.bracket = cur.bracket || blankBracket();
-      mut(cur);
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev)));
+      mut(cur); normalize(cur);
       QMCloud.saveOfficial(cur);
       return cur;
     });
   }
-  function pickGroupOff(gid, slot, code) {
-    updateOfficial((p) => {
-      const g = p.groups[gid] || {};
-      if (g[slot] === code) delete g[slot];
-      else { g[slot] = code; const other = slot === "first" ? "second" : "first"; if (g[other] === code) delete g[other]; }
-      p.groups[gid] = g;
-    });
-  }
-  function setScoreOff(mid, k, val) {
-    updateOfficial((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
-  }
-  function setBracketOff(round, index, value) {
-    updateOfficial((p) => {
-      const b = { qf: [...(p.bracket.qf || Array(8).fill(null))], sf: [...(p.bracket.sf || Array(4).fill(null))], fin: [...(p.bracket.fin || Array(2).fill(null))], champ: p.bracket.champ, third: p.bracket.third };
-      if (round === "champ") b.champ = value; else if (round === "third") b.third = value; else b[round][index] = value;
-      p.bracket = cleanBracket(b);
-    });
-  }
+  const pickGroupOff = (gid, slot, code) => updateOfficial((p) => {
+    const g = p.groups[gid] || {};
+    if (g[slot] === code) delete g[slot];
+    else { ["first", "second", "third"].forEach((s) => { if (g[s] === code) delete g[s]; }); g[slot] = code; }
+    p.groups[gid] = g;
+  });
+  const toggleThirdOff = (code) => updateOfficial((p) => { p.thirds = toggleInSet(p.thirds, code, 8); });
+  const setScoreOff = (mid, k, val) => updateOfficial((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
+  const koToggleOff = (key, code) => updateOfficial((p) => { p.ko[key] = toggleInSet(p.ko[key], code, CAPS[key]); });
+  const koSingleOff = (key, code) => updateOfficial((p) => { p.ko[key] = p.ko[key] === code ? null : code; });
   function clearOfficial() {
     if (!confirm("¿Borrar TODOS los resultados oficiales? La tabla volverá a cero.")) return;
-    const blank = { groups: {}, scores: {}, bracket: blankBracket() };
+    const blank = blankPred();
     setOfficial(blank); QMCloud.saveOfficial(blank);
   }
   function setLock(val) { const next = { ...config, locked: val }; setConfig(next); QMCloud.saveConfig(next); }
@@ -132,24 +135,21 @@ function App() {
   }
 
   /* ---------- derivados ---------- */
-  const qualified = useMemo(() => qualifiedFrom(pred.groups), [pred.groups]);
-  const pool = qualified.length >= 8 ? qualified : ALL_CODES;
-  const offQualified = useMemo(() => qualifiedFrom(official.groups), [official.groups]);
-  const offPool = offQualified.length >= 8 ? offQualified : ALL_CODES;
+  const pool = useMemo(() => poolFrom(pred), [pred.groups, pred.thirds]);
+  const offPool = useMemo(() => poolFrom(official), [official.groups, official.thirds]);
 
-  const groupsDone = QM.GROUPS.filter((g) => { const v = pred.groups[g.id] || {}; return v.first && v.second; }).length;
-  const scoresDone = QM.KEY_MATCHES.filter((m) => { const v = (pred.scores || {})[m.id] || {}; return v.h !== undefined && v.h !== "" && v.a !== undefined && v.a !== ""; }).length;
+  const groupsDone = QM.GROUPS.filter((g) => { const v = pred.groups[g.id] || {}; return v.first && v.second && v.third; }).length;
+  const thirdsDone = (pred.thirds || []).length;
+  const scoresDone = QM.MATCHES.filter((m) => QMScore.hasScore((pred.scores || {})[m.id])).length;
 
   const standings = useMemo(() => QMScore.standings(all, official), [all, official]);
   const hasResults = QMScore.hasOfficialResults(official);
-  const playerHasChamp = (id) => { const p = all[id]; return !!(p && p.bracket && p.bracket.champ); };
+  const playerHasChamp = (id) => { const p = all[id]; return !!(p && p.ko && p.ko.champ); };
   const curPlayer = QM.PLAYERS.find((x) => x.id === pid);
 
   return (
     <React.Fragment>
-      <div className="colorbar">
-        {QM.GROUPS.map((g) => <span key={g.id} style={{ background: g.color }}></span>)}
-      </div>
+      <div className="colorbar">{QM.GROUPS.map((g) => <span key={g.id} style={{ background: g.color }}></span>)}</div>
 
       <header className="masthead">
         <div className="wrap">
@@ -162,13 +162,9 @@ function App() {
           </div>
           <h1 className="mast-title">Quiniela<br /><em>Mundial</em> 2026</h1>
           <div className="mast-meta">
-            <span><b>48</b> selecciones</span>
-            <span><b>12</b> grupos</span>
-            <span>{QM.META.sub}</span>
+            <span><b>48</b> selecciones</span><span><b>12</b> grupos</span><span>{QM.META.sub}</span>
           </div>
-          <div className="print-only print-name" style={{ display: "none", marginTop: 14, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20 }}>
-            Quiniela de: {curPlayer.name}
-          </div>
+          <div className="print-only print-name" style={{ display: "none", marginTop: 14, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20 }}>Quiniela de: {curPlayer.name}</div>
         </div>
       </header>
 
@@ -189,7 +185,7 @@ function App() {
             <button className="btn" onClick={() => window.print()}>Imprimir</button>
             {isAdmin
               ? <button className="btn solid" onClick={() => { setIsAdmin(false); if (tab === "admin") setTab("table"); }}>Salir admin</button>
-              : <button className="btn" title="Capturar resultados" onClick={loginAdmin}>🔐 Admin</button>}
+              : <button className="btn" onClick={loginAdmin}>🔐 Admin</button>}
           </div>
         </div>
       </div>
@@ -197,22 +193,22 @@ function App() {
       <div className="wrap">
         <nav className="tabs no-print">
           <button className={"tab" + (tab === "groups" ? " active" : "")} onClick={() => setTab("groups")}>Fase de Grupos <span className="tnum">{groupsDone}/12</span></button>
-          <button className={"tab" + (tab === "scores" ? " active" : "")} onClick={() => setTab("scores")}>Marcadores <span className="tnum">{scoresDone}/8</span></button>
-          <button className={"tab" + (tab === "bracket" ? " active" : "")} onClick={() => setTab("bracket")}>Camino al Título <span className="tnum">{pred.bracket.champ ? "🏆" : "—"}</span></button>
+          <button className={"tab" + (tab === "scores" ? " active" : "")} onClick={() => setTab("scores")}>Marcadores <span className="tnum">{scoresDone}/72</span></button>
+          <button className={"tab" + (tab === "ko" ? " active" : "")} onClick={() => setTab("ko")}>Camino al Título <span className="tnum">{pred.ko.champ ? "🏆" : "—"}</span></button>
           <button className={"tab" + (tab === "table" ? " active" : "")} onClick={() => setTab("table")}>🏆 Tabla</button>
           <button className={"tab" + (tab === "rules" ? " active" : "")} onClick={() => setTab("rules")}>Reglas</button>
           {isAdmin && <button className={"tab" + (tab === "admin" ? " active" : "")} onClick={() => setTab("admin")}>⚙️ Admin</button>}
         </nav>
 
         {lockedNow && tab !== "table" && tab !== "rules" && tab !== "admin" && (
-          <div className="lockbar no-print"><b>🔒 Pronósticos cerrados.</b><span>Ya arrancó el Mundial — tus picks quedaron registrados. Revisa la <b>Tabla</b> para ver cómo vas.</span></div>
+          <div className="lockbar no-print"><b>🔒 Pronósticos cerrados.</b><span>Ya arrancó el Mundial — tus picks quedaron registrados. Revisa la <b>Tabla</b>.</span></div>
         )}
 
-        {/* GROUPS */}
+        {/* GROUPS + THIRDS */}
         <section className="section print-section" style={{ display: tab === "groups" ? "block" : "none" }}>
           <div className="section-head">
             <h2>Fase de Grupos</h2>
-            <p>Marca quién termina <b>1.º</b> (gana el grupo) y <b>2.º</b> en cada grupo. Esos son los que clasifican a la eliminatoria.</p>
+            <p>Marca el <b>1.º</b>, <b>2.º</b> y <b>3.º</b> de cada grupo. El 1.º y 2.º clasifican directo; los 3.º compiten por ser <b>mejor tercero</b>.</p>
             <div className="prog" style={{ marginTop: 10 }}>
               <span>{groupsDone}/12 grupos</span>
               <span className="bar"><span className="fill" style={{ width: (groupsDone / 12 * 100) + "%" }}></span></span>
@@ -221,31 +217,34 @@ function App() {
           <div className="group-grid">
             {QM.GROUPS.map((g) => (<GroupCard key={g.id} group={g} value={pred.groups[g.id]} onPick={pickGroup} locked={lockedNow} />))}
           </div>
+          <ThirdsSelector groups={pred.groups} selected={pred.thirds} onToggle={toggleThird} locked={lockedNow} />
         </section>
 
-        {/* SCORES */}
+        {/* SCORES (72) */}
         <section className="section print-section" style={{ display: tab === "scores" ? "block" : "none" }}>
           <div className="section-head">
-            <h2>Marcadores Estelares</h2>
-            <p>Pronostica el <b>marcador exacto</b> de los partidos más jugosos de la fase de grupos.</p>
+            <h2>Marcadores · Fase de Grupos</h2>
+            <p>Pronostica el <b>marcador</b> de los <b>72 partidos</b>. Acertar el resultado da puntos; el marcador exacto da más.</p>
             <div className="prog" style={{ marginTop: 10 }}>
-              <span>{scoresDone}/8 marcadores</span>
-              <span className="bar"><span className="fill" style={{ width: (scoresDone / 8 * 100) + "%" }}></span></span>
+              <span>{scoresDone}/72 partidos</span>
+              <span className="bar"><span className="fill" style={{ width: (scoresDone / 72 * 100) + "%" }}></span></span>
             </div>
           </div>
-          <div className="score-grid">
-            {QM.KEY_MATCHES.map((m) => (<MatchScore key={m.id} match={m} value={(pred.scores || {})[m.id]} onChange={setScore} locked={lockedNow} />))}
+          <div className="fx-grid">
+            {QM.GROUPS.map((g) => (
+              <GroupFixtures key={g.id} group={g} matches={QM.MATCHES.filter((m) => m.group === g.id)}
+                scores={pred.scores} onChange={setScore} locked={lockedNow} />
+            ))}
           </div>
         </section>
 
-        {/* BRACKET */}
-        <section className="section print-section" style={{ display: tab === "bracket" ? "block" : "none" }}>
+        {/* KNOCKOUT */}
+        <section className="section print-section" style={{ display: tab === "ko" ? "block" : "none" }}>
           <div className="section-head">
             <h2>Camino al Título</h2>
-            <p>Arma tu bracket: elige los 8 de cuartos, avanza a semifinales, la final y corona a tu <b>Campeón del Mundo</b>.</p>
+            <p>Avanza a los 32 clasificados por las rondas: <b>Dieciseisavos → Octavos → Cuartos → Semifinales → Final</b>. Toca un equipo para pasarlo a la siguiente ronda.</p>
           </div>
-          <div className="bhint no-print">💡 Las opciones de <b>Cuartos</b> salen de los equipos que marcaste como clasificados en la Fase de Grupos{qualified.length < 8 ? " (completa más grupos para afinar la lista)." : "."} Cada ronda se desbloquea con la anterior.</div>
-          <Bracket pool={pool} bracket={pred.bracket} onSet={setBracket} locked={lockedNow} />
+          <KnockoutFlow pool={pool} ko={pred.ko} onToggle={koToggle} onSetSingle={koSingle} locked={lockedNow} />
         </section>
 
         {/* TABLE */}
@@ -261,20 +260,25 @@ function App() {
         <section className="section print-section" style={{ display: tab === "rules" ? "block" : "none" }}>
           <div className="section-head">
             <h2>Reglas y Puntos</h2>
-            <p>Sistema de puntuación para la porra del Grupo Hogar. Gana quien sume más al final del torneo.</p>
+            <p>Sistema de puntuación para la porra. Gana quien sume más al final del torneo.</p>
           </div>
           <div className="rules-grid">
-            <div className="panel">
-              <h3>Tabla de puntos</h3>
-              {QM.RULES.map((r, i) => (<div className="rule" key={i}><span className="pts">{r.pts}</span><span className="rl">{r.label}</span></div>))}
+            <div>
+              {QM.RULES.map((sec, i) => (
+                <div className="panel" key={i} style={{ marginBottom: 16 }}>
+                  <h3>{sec.section}</h3>
+                  {sec.items.map((r, j) => (<div className="rule" key={j}><span className="pts">{r.pts}</span><span className="rl">{r.label}</span></div>))}
+                </div>
+              ))}
             </div>
             <div className="panel">
               <h3>Cómo jugar</h3>
               <ol className="howto">
                 <li>Elige tu nombre arriba. Cada quien tiene su <b>propia quiniela</b>.</li>
-                <li>Llena los <b>grupos</b>, los <b>marcadores</b> y el <b>bracket</b> antes del primer partido (<b>11 jun</b>).</li>
-                <li>Al arrancar el Mundial los pronósticos <b>se cierran</b> y la <b>Tabla</b> empieza a sumar.</li>
-                <li>{QM.META.finalInfo}.</li>
+                <li>En <b>Grupos</b>: marca 1.º, 2.º, 3.º y elige los 8 mejores terceros.</li>
+                <li>En <b>Marcadores</b>: pronostica los 72 partidos de la fase de grupos.</li>
+                <li>En <b>Camino al Título</b>: arma la eliminatoria hasta el campeón.</li>
+                <li>Al arrancar el Mundial (<b>11 jun</b>) se cierran los pronósticos y la <b>Tabla</b> empieza a sumar.</li>
               </ol>
             </div>
           </div>
@@ -284,8 +288,9 @@ function App() {
         {isAdmin && (
           <section className="section" style={{ display: tab === "admin" ? "block" : "none" }}>
             {tab === "admin" && (
-              <AdminPanel official={official} pickGroup={pickGroupOff} setScore={setScoreOff} setBracket={setBracketOff}
-                pool={offPool} lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
+              <AdminPanel official={official} pickGroup={pickGroupOff} toggleThird={toggleThirdOff}
+                setScore={setScoreOff} koToggle={koToggleOff} koSingle={koSingleOff} offPool={offPool}
+                lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
                 onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }} />
             )}
           </section>

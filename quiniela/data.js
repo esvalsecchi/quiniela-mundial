@@ -80,17 +80,22 @@
     { id: "L", color: "oklch(0.62 0.19 12)",  teams: ["ENG", "CRO", "GHA", "PAN"] },
   ];
 
-  // Partidos estelares para marcador exacto
-  const KEY_MATCHES = [
-    { id: "m1", home: "MEX", away: "RSA", date: "11 jun", tag: "Inauguración · Estadio Azteca" },
-    { id: "m2", home: "USA", away: "PAR", date: "12 jun", tag: "Grupo D · Los Ángeles" },
-    { id: "m3", home: "BRA", away: "MAR", date: "13 jun", tag: "Grupo C · Nueva Jersey" },
-    { id: "m4", home: "GER", away: "CIV", date: "14 jun", tag: "Grupo E · Filadelfia" },
-    { id: "m5", home: "FRA", away: "SEN", date: "16 jun", tag: "Grupo I · Nueva Jersey" },
-    { id: "m6", home: "ARG", away: "ALG", date: "16 jun", tag: "Grupo J · Kansas City" },
-    { id: "m7", home: "ENG", away: "CRO", date: "17 jun", tag: "Grupo L · Dallas" },
-    { id: "m8", home: "ESP", away: "URU", date: "21 jun", tag: "Grupo H · Miami" },
-  ];
+  // Los 72 partidos de la fase de grupos (round-robin de cada grupo de 4).
+  // 3 jornadas × 2 partidos × 12 grupos = 72.
+  function roundRobin(t) {
+    const [a, b, c, d] = t;
+    return [
+      { jor: 1, home: a, away: b }, { jor: 1, home: c, away: d },
+      { jor: 2, home: a, away: c }, { jor: 2, home: d, away: b },
+      { jor: 3, home: d, away: a }, { jor: 3, home: b, away: c },
+    ];
+  }
+  const MATCHES = [];
+  GROUPS.forEach((g) => {
+    roundRobin(g.teams).forEach((m, i) => {
+      MATCHES.push({ id: g.id + "-" + i, group: g.id, jor: m.jor, home: m.home, away: m.away });
+    });
+  });
 
   // Jugadores de la porra familiar (color de avatar por persona)
   const PLAYERS = [
@@ -106,16 +111,42 @@
     { id: "este",  name: "Esteban",     color: "oklch(0.62 0.19 12)" },
   ];
 
-  // Reglas de puntuación (porra casera)
+  // Valores de puntos (usados por el motor de puntuación y la tabla de reglas)
+  const POINTS = {
+    clasificado: 2,   // cada equipo que clasifica directo (1.º o 2.º) acertado
+    lider: 1,         // acertar quién gana el grupo (1.º exacto)
+    tercerGrupo: 1,   // acertar el 3.º de cada grupo
+    mejorTercero: 2,  // cada "mejor tercero" que avanza, acertado
+    resultado: 1,     // resultado correcto de un partido (gana/empate)
+    exacto: 3,        // marcador exacto (total, ya incluye el de resultado)
+    octavos: 2,       // cada equipo que llega a Octavos
+    cuartos: 3,       // cada equipo que llega a Cuartos
+    semis: 5,         // cada semifinalista
+    final: 8,         // cada finalista
+    campeon: 12,      // campeón del mundo
+    tercer: 4,        // tercer lugar
+  };
+
+  // Reglas de puntuación agrupadas por sección (para la pestaña Reglas)
   const RULES = [
-    { pts: "+3", label: "Equipo clasificado a eliminatorias" },
-    { pts: "+2", label: "Acertar al ganador del grupo (1.º)" },
-    { pts: "+5", label: "Marcador exacto de partido estelar" },
-    { pts: "+2", label: "Acertar el resultado (gana / empate)" },
-    { pts: "+5", label: "Cada semifinalista correcto" },
-    { pts: "+8", label: "Cada finalista correcto" },
-    { pts: "+12", label: "Acertar al Campeón del Mundo" },
-    { pts: "+4", label: "Acertar el 3.er lugar" },
+    { section: "Fase de grupos", items: [
+      { pts: "+2", label: "Cada equipo que clasifica (1.º o 2.º) acertado" },
+      { pts: "+1", label: "Acertar al líder del grupo (1.º)" },
+      { pts: "+1", label: "Acertar el 3.º de cada grupo" },
+      { pts: "+2", label: "Cada «mejor tercero» que avanza, acertado" },
+    ]},
+    { section: "Marcadores · 72 partidos", items: [
+      { pts: "+1", label: "Resultado correcto (gana o empata)" },
+      { pts: "+3", label: "Marcador exacto (en vez del +1)" },
+    ]},
+    { section: "Eliminatoria", items: [
+      { pts: "+2", label: "Cada equipo en Octavos de Final" },
+      { pts: "+3", label: "Cada equipo en Cuartos de Final" },
+      { pts: "+5", label: "Cada semifinalista" },
+      { pts: "+8", label: "Cada finalista" },
+      { pts: "+12", label: "Campeón del Mundo" },
+      { pts: "+4", label: "Tercer lugar" },
+    ]},
   ];
 
   // Configuración por defecto (se puede sobreescribir desde la nube)
@@ -131,5 +162,8 @@
     finalInfo: "La Gran Final · 19 jul · MetLife, Nueva Jersey",
   };
 
-  window.QM = { T, GROUPS, KEY_MATCHES, PLAYERS, RULES, META, CONFIG };
+  // Capacidades de cada ronda eliminatoria (cuántos equipos avanzan)
+  const KO_CAPS = { r16: 16, qf: 8, sf: 4, fin: 2 };
+
+  window.QM = { T, GROUPS, MATCHES, PLAYERS, RULES, POINTS, KO_CAPS, META, CONFIG };
 })();

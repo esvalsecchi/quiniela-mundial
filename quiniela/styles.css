@@ -335,6 +335,77 @@ footer.foot { text-align: center; color: var(--ink-faint); font-size: 12.5px; pa
   .lb-sub { display: none; }
 }
 
+/* ============================================================ 3.ER PUESTO EN GRUPOS */
+.trow .picks { gap: 5px; }
+.pos { width: 28px; height: 28px; }
+.pos.on3 { background: oklch(0.66 0.10 60); border-color: oklch(0.52 0.10 60); color: white; box-shadow: var(--shadow-sm); }
+.trow.q3 { background: oklch(0.98 0.02 60 / 0.6); }
+.trow.q3 .barflag { background: oklch(0.66 0.10 60); }
+
+/* ============================================================ FIXTURES (72 partidos) */
+.fx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+.fxcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; --gc: var(--brand); }
+.fxhead { display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-bottom: 1px solid var(--line-soft); }
+.fxhead .fxtitle { font-family: var(--font-display); font-weight: 700; font-size: 15px; flex: 1; }
+.fxjor { padding: 4px 0; }
+.fxjor + .fxjor { border-top: 1px solid var(--line-soft); }
+.fxjlabel { font-family: var(--font-display); font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-faint); padding: 9px 15px 4px; }
+.fxrow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 5px 13px; }
+.fxteam { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.fxteam.home { justify-content: flex-end; text-align: right; }
+.fxteam.away { justify-content: flex-start; }
+.fxteam .fxname { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-soft); }
+.fxteam.w .fxname { color: var(--ink); font-weight: 700; }
+.fxteam.d .fxname { color: var(--ink-soft); }
+.fxteam .fxflag { font-size: 17px; flex: 0 0 auto; line-height: 1; }
+.fxscore { display: flex; align-items: center; gap: 4px; }
+.fxnum { width: 32px; height: 34px; text-align: center; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper-2); font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--ink); -moz-appearance: textfield; }
+.fxnum::-webkit-outer-spin-button, .fxnum::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.fxnum:focus { outline: none; border-color: var(--brand); background: var(--card); box-shadow: 0 0 0 3px oklch(0.58 0.17 152 / 0.18); }
+.fxdash { color: var(--ink-faint); font-weight: 700; font-size: 12px; }
+
+/* ============================================================ MEJORES TERCEROS */
+.thirds { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px 20px; }
+.thirds-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.thirds-title { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.thirds-sub { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.thirds-count { margin-left: auto; font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--ink-faint); background: var(--paper-2); border: 1px solid var(--line); padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+.thirds-count.ok { color: var(--brand-ink); background: oklch(0.95 0.04 152); border-color: var(--brand); }
+.thirds-empty { background: var(--paper-2); border: 1px dashed var(--line); border-radius: 12px; padding: 16px; text-align: center; color: var(--ink-soft); font-size: 13.5px; }
+.thirds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 9px; }
+.third-chip { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1.5px solid var(--line); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-family: var(--font-body); text-align: left; transition: border-color .12s, background .12s, transform .1s; --gc: var(--brand); }
+.third-chip:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--ink-soft); }
+.third-chip .tc-grp { font-family: var(--font-display); font-weight: 800; font-size: 11px; color: white; background: var(--gc); width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; flex: 0 0 auto; }
+.third-chip .tc-flag { font-size: 18px; }
+.third-chip .tc-name { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.third-chip .tc-check { color: var(--brand-ink); font-weight: 800; }
+.third-chip.on { border-color: var(--brand); background: oklch(0.97 0.03 152); box-shadow: var(--shadow-sm); }
+.third-chip.full { opacity: 0.4; cursor: not-allowed; }
+
+/* ============================================================ CAMINO AL TÍTULO (knockout) */
+.ko-scroll { overflow-x: auto; padding: 4px 2px 20px; }
+.ko-flow { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(186px, 1fr); gap: 16px; min-width: 1020px; align-items: start; }
+.ko-col { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.ko-col-head { padding: 12px 13px 11px; border-bottom: 1px solid var(--line-soft); }
+.ko-col-title { font-family: var(--font-display); font-weight: 800; font-size: 14.5px; letter-spacing: -0.01em; }
+.ko-col-sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; line-height: 1.3; }
+.ko-counter { display: inline-block; margin-top: 8px; font-family: var(--font-display); font-weight: 800; font-size: 11px; color: var(--ink-faint); background: var(--paper-2); border: 1px solid var(--line); padding: 2px 9px; border-radius: 999px; }
+.ko-counter.ok { color: var(--brand-ink); background: oklch(0.95 0.04 152); border-color: var(--brand); }
+.ko-col-body { padding: 9px; display: flex; flex-direction: column; gap: 6px; }
+.ko-empty { font-size: 12px; color: var(--ink-faint); text-align: center; padding: 16px 8px; line-height: 1.4; }
+.ko-chip { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1.5px solid var(--line); border-radius: 9px; padding: 8px 10px; cursor: pointer; font-family: var(--font-body); text-align: left; transition: border-color .12s, background .12s, transform .08s; --gc: var(--brand); }
+.ko-chip:hover:not(:disabled) { transform: translateX(2px); border-color: var(--ink-soft); }
+.ko-chip .ko-flag { font-size: 17px; flex: 0 0 auto; line-height: 1; }
+.ko-chip .ko-name { font-weight: 600; font-size: 13px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ko-chip .ko-check { font-weight: 800; color: var(--gc); font-size: 13px; }
+.ko-chip.on { border-color: var(--gc); background: color-mix(in oklch, var(--gc) 12%, white); box-shadow: var(--shadow-sm); }
+.ko-chip.full { opacity: 0.38; cursor: not-allowed; }
+
+.champ-banner { display: flex; align-items: center; gap: 16px; margin-top: 18px; background: linear-gradient(100deg, oklch(0.97 0.05 88), var(--card) 60%); border: 1.5px solid var(--gold-deep); border-radius: var(--radius); padding: 16px 22px; }
+.champ-banner .cb-trophy { font-size: 34px; }
+.champ-banner .cb-k { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: var(--gold-deep); }
+.champ-banner .cb-team { font-family: var(--font-display); font-weight: 800; font-size: 24px; margin-top: 2px; }
+
 /* ============================================================ PRINT */
 .print-only { display: none; }
 @media print {

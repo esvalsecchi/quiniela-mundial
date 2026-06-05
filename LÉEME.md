@@ -115,16 +115,29 @@ Cuando recargues la página, arriba a la derecha el indicador dirá **“En la n
 
 ## 🧮 Puntos
 
+**Fase de grupos**
 | Puntos | Por |
 |---|---|
-| +3 | Cada equipo clasificado acertado |
-| +2 | Acertar al ganador del grupo (1.º) |
-| +5 | Marcador exacto de partido estelar |
-| +2 | Acertar el resultado (gana / empate) |
-| +5 | Cada semifinalista correcto |
-| +8 | Cada finalista correcto |
-| +12 | Acertar al Campeón |
-| +4 | Acertar el 3.er lugar |
+| +2 | Cada equipo que clasifica (1.º o 2.º) acertado |
+| +1 | Acertar al líder del grupo (1.º) |
+| +1 | Acertar el 3.º de cada grupo |
+| +2 | Cada «mejor tercero» que avanza, acertado |
+
+**Marcadores (72 partidos)**
+| Puntos | Por |
+|---|---|
+| +1 | Resultado correcto (gana o empata) |
+| +3 | Marcador exacto (en vez del +1) |
+
+**Eliminatoria**
+| Puntos | Por |
+|---|---|
+| +2 | Cada equipo en Octavos |
+| +3 | Cada equipo en Cuartos |
+| +5 | Cada semifinalista |
+| +8 | Cada finalista |
+| +12 | Campeón |
+| +4 | Tercer lugar |
 
 ---
 
