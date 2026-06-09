@@ -89,7 +89,14 @@ function App() {
     p.groups[gid] = g;
   });
   const toggleThird = (code) => updatePlayer((p) => { p.thirds = toggleInSet(p.thirds, code, 8); });
-  const setScore = (mid, k, val) => updatePlayer((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
+  const setScore = (mid, k, val) => updatePlayer((p) => {
+    p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val;
+    const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
+    if (groupId) {
+      const standings = QMScore.calcGroupStandings(groupId, p.scores);
+      if (standings) { p.groups = p.groups || {}; p.groups[groupId] = standings; }
+    }
+  });
   const koToggle = (key, code) => updatePlayer((p) => { p.ko[key] = toggleInSet(p.ko[key], code, CAPS[key]); });
   const koSingle = (key, code) => updatePlayer((p) => { p.ko[key] = p.ko[key] === code ? null : code; });
 
