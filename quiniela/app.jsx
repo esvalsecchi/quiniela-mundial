@@ -72,6 +72,30 @@ function App() {
   const lockedNow = lockMode != null ? lockMode : (Date.now() >= Date.parse(QM.CONFIG.lockAt));
   const phase2Open = !!(config && config.phase2Open);
 
+  // Auto-fill group positions when scores are already complete (e.g. data loaded from Firebase)
+  const predScoresKey = useMemo(() => JSON.stringify(pred.scores), [pred.scores]);
+  useEffect(() => {
+    const scores = pred.scores || {};
+    const groups = pred.groups || {};
+    const updates = {};
+    QM.GROUPS.forEach((g) => {
+      const standings = QMScore.calcGroupStandings(g.id, scores);
+      if (!standings) return;
+      const cur = groups[g.id] || {};
+      if (cur.first !== standings.first || cur.second !== standings.second || cur.third !== standings.third) {
+        updates[g.id] = standings;
+      }
+    });
+    if (!Object.keys(updates).length) return;
+    setAll((prev) => {
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev[pid])));
+      cur.groups = { ...cur.groups, ...updates };
+      normalize(cur);
+      QMCloud.savePlayer(pid, cur);
+      return { ...prev, [pid]: cur };
+    });
+  }, [pid, predScoresKey]);
+
   /* ---------- mutaciones de jugador ---------- */
   function updatePlayer(mut) {
     if (lockedNow) return;
