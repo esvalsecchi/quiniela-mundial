@@ -25,5 +25,5 @@ window.QM_FIREBASE = {
    Con el plan gratuito tienes 100 peticiones/día (más que suficiente).
    ──────────────────────────────────────────────────────────── */
 window.QM_API = {
-  KEY: "TU_API_KEY",   // ← pega aquí tu clave de api-sports.io
+  KEY: "bc7de03f47e5ae1d36de7d55e0d0dc4d",
 };
