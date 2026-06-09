@@ -70,6 +70,7 @@ function App() {
   const pred = withDefaults(all[pid]);
   const lockMode = config && config.locked !== undefined ? config.locked : QM.CONFIG.locked;
   const lockedNow = lockMode != null ? lockMode : (Date.now() >= Date.parse(QM.CONFIG.lockAt));
+  const phase2Open = !!(config && config.phase2Open);
 
   /* ---------- mutaciones de jugador ---------- */
   function updatePlayer(mut) {
@@ -91,6 +92,20 @@ function App() {
   const setScore = (mid, k, val) => updatePlayer((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
   const koToggle = (key, code) => updatePlayer((p) => { p.ko[key] = toggleInSet(p.ko[key], code, CAPS[key]); });
   const koSingle = (key, code) => updatePlayer((p) => { p.ko[key] = p.ko[key] === code ? null : code; });
+
+  function updatePlayerKo2(mut) {
+    if (!phase2Open) return;
+    setAll((prev) => {
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev[pid])));
+      if (!cur.ko2) cur.ko2 = blankKO();
+      mut(cur);
+      cur.ko2 = cleanKO(cur.ko2, offPool);
+      QMCloud.savePlayer(pid, cur);
+      return { ...prev, [pid]: cur };
+    });
+  }
+  const ko2Toggle = (key, code) => updatePlayerKo2((p) => { p.ko2[key] = toggleInSet(p.ko2[key], code, CAPS[key]); });
+  const ko2Single = (key, code) => updatePlayerKo2((p) => { p.ko2[key] = p.ko2[key] === code ? null : code; });
 
   function resetPlayer() {
     if (lockedNow) { alert("Los pronósticos están cerrados."); return; }
@@ -116,7 +131,14 @@ function App() {
     p.groups[gid] = g;
   });
   const toggleThirdOff = (code) => updateOfficial((p) => { p.thirds = toggleInSet(p.thirds, code, 8); });
-  const setScoreOff = (mid, k, val) => updateOfficial((p) => { p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val; });
+  const setScoreOff = (mid, k, val) => updateOfficial((p) => {
+    p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val;
+    const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
+    if (groupId) {
+      const standings = QMScore.calcGroupStandings(groupId, p.scores);
+      if (standings) { p.groups = p.groups || {}; p.groups[groupId] = standings; }
+    }
+  });
   const koToggleOff = (key, code) => updateOfficial((p) => { p.ko[key] = toggleInSet(p.ko[key], code, CAPS[key]); });
   const koSingleOff = (key, code) => updateOfficial((p) => { p.ko[key] = p.ko[key] === code ? null : code; });
   function clearOfficial() {
@@ -125,6 +147,19 @@ function App() {
     setOfficial(blank); QMCloud.saveOfficial(blank);
   }
   function setLock(val) { const next = { ...config, locked: val }; setConfig(next); QMCloud.saveConfig(next); }
+  function setPhase2(val) { const next = { ...config, phase2Open: val }; setConfig(next); QMCloud.saveConfig(next); }
+  function syncOfficialScores(newScores) {
+    updateOfficial((p) => {
+      Object.entries(newScores).forEach(([mid, score]) => {
+        p.scores[mid] = score;
+        const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
+        if (groupId) {
+          const standings = QMScore.calcGroupStandings(groupId, p.scores);
+          if (standings) { p.groups = p.groups || {}; p.groups[groupId] = standings; }
+        }
+      });
+    });
+  }
 
   function loginAdmin() {
     const pin = prompt("PIN de administrador:");
@@ -241,10 +276,23 @@ function App() {
         {/* KNOCKOUT */}
         <section className="section print-section" style={{ display: tab === "ko" ? "block" : "none" }}>
           <div className="section-head">
-            <h2>Camino al Título</h2>
+            <h2>{phase2Open ? "Fase 1 — Pronóstico pre-torneo" : "Camino al Título"}</h2>
             <p>Avanza a los 32 clasificados por las rondas: <b>Dieciseisavos → Octavos → Cuartos → Semifinales → Final</b>. Toca un equipo para pasarlo a la siguiente ronda.</p>
           </div>
           <KnockoutFlow pool={pool} ko={pred.ko} onToggle={koToggle} onSetSingle={koSingle} locked={lockedNow} />
+
+          {phase2Open && (
+            <div style={{ marginTop: 32 }}>
+              <div className="section-head">
+                <h2>Fase 2 — Eliminatoria real 🏆</h2>
+                <p>Los <b>32 equipos que realmente clasificaron</b>. Arma tu bracket de nuevo — los puntos se suman a los de la Fase 1.</p>
+              </div>
+              {offPool.length < 32 && (
+                <div className="bhint">⏳ Esperando que el admin termine de cargar los clasificados reales. Llevan <b>{offPool.length}/32</b>.</div>
+              )}
+              <KnockoutFlow pool={offPool} ko={pred.ko2 || blankKO()} onToggle={ko2Toggle} onSetSingle={ko2Single} locked={false} />
+            </div>
+          )}
         </section>
 
         {/* TABLE */}
@@ -291,6 +339,8 @@ function App() {
               <AdminPanel official={official} pickGroup={pickGroupOff} toggleThird={toggleThirdOff}
                 setScore={setScoreOff} koToggle={koToggleOff} koSingle={koSingleOff} offPool={offPool}
                 lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
+                phase2Open={phase2Open} onSetPhase2={setPhase2}
+                onSyncScores={syncOfficialScores}
                 onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }} />
             )}
           </section>

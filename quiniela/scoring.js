@@ -53,6 +53,15 @@
     if (pk.champ && ok.champ && pk.champ === ok.champ) R.champ += P.campeon;
     if (pk.third && ok.third && pk.third === ok.third) R.third += P.tercer;
 
+    // Fase 2 — eliminatoria post-grupos
+    const pk2 = pred.ko2 || {};
+    inter(pk2.r16, ok.r16).forEach(() => { R.octavos += P.octavos; });
+    inter(pk2.qf, ok.qf).forEach(() => { R.cuartos += P.cuartos; });
+    inter(pk2.sf, ok.sf).forEach(() => { R.semis += P.semis; });
+    inter(pk2.fin, ok.fin).forEach(() => { R.finals += P.final; });
+    if (pk2.champ && ok.champ && pk2.champ === ok.champ) R.champ += P.campeon;
+    if (pk2.third && ok.third && pk2.third === ok.third) R.third += P.tercer;
+
     R.total = R.groupPos + R.thirds + R.scores + R.octavos + R.cuartos + R.semis + R.finals + R.champ + R.third;
     // agregados para la tabla
     R.grupos = R.groupPos + R.thirds;
@@ -92,5 +101,26 @@
     return rows;
   }
 
-  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore };
+  function calcGroupStandings(groupId, scores) {
+    const group = QM.GROUPS.find(function(g) { return g.id === groupId; });
+    if (!group) return null;
+    const matches = QM.MATCHES.filter(function(m) { return m.group === groupId; });
+    if (!matches.every(function(m) { return hasScore((scores || {})[m.id]); })) return null;
+    const pts = {}, gd = {}, gf = {};
+    group.teams.forEach(function(t) { pts[t] = 0; gd[t] = 0; gf[t] = 0; });
+    matches.forEach(function(m) {
+      const s = scores[m.id], h = +s.h, a = +s.a;
+      gf[m.home] += h; gf[m.away] += a;
+      gd[m.home] += (h - a); gd[m.away] += (a - h);
+      if (h > a) pts[m.home] += 3;
+      else if (a > h) pts[m.away] += 3;
+      else { pts[m.home]++; pts[m.away]++; }
+    });
+    const sorted = group.teams.slice().sort(function(a, b) {
+      return (pts[b] - pts[a]) || (gd[b] - gd[a]) || (gf[b] - gf[a]) || a.localeCompare(b);
+    });
+    return { first: sorted[0], second: sorted[1], third: sorted[2] };
+  }
+
+  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore, calcGroupStandings };
 })();

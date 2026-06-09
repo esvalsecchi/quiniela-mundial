@@ -2,9 +2,34 @@
    Captura los resultados REALES; alimenta la tabla de ganadores. */
 function AdminPanel(props) {
   const { official, pickGroup, toggleThird, setScore, koToggle, koSingle, offPool,
-          lockMode, lockedNow, onSetLock, onClear, onExit } = props;
+          lockMode, lockedNow, onSetLock, phase2Open, onSetPhase2, onSyncScores, onClear, onExit } = props;
   const { useState } = React;
-  const [sub, setSub] = useState("groups");
+  const [sub, setSub] = useState("scores");
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  async function syncFromAPI() {
+    if (!window.QMAPI || !onSyncScores) return;
+    setSyncing(true); setSyncMsg("");
+    try {
+      const fixtures = await window.QMAPI.fetchGroupFixtures();
+      const scores = window.QMAPI.parseScores(fixtures);
+      const count = Object.keys(scores).length;
+      if (!count) { setSyncMsg("⏳ Aún no hay partidos terminados."); setSyncing(false); return; }
+      onSyncScores(scores);
+      setSyncMsg("✅ " + count + " partidos sincronizados.");
+    } catch (e) {
+      setSyncMsg("❌ " + e.message);
+    }
+    setSyncing(false);
+  }
+
+  async function testAPI() {
+    if (!window.QMAPI) return;
+    setSyncMsg("⏳ Probando clave...");
+    const r = await window.QMAPI.testKey();
+    setSyncMsg(r.ok ? "✅ " + r.msg : "❌ " + r.msg);
+  }
   const QM = window.QM;
 
   const lockOpts = [
@@ -22,7 +47,7 @@ function AdminPanel(props) {
       </div>
 
       <div className={"lockbar" + (lockedNow ? "" : " live")}>
-        <b>Pronósticos:</b>
+        <b>Pronósticos Fase de Grupos:</b>
         <span>{lockedNow ? "🔒 Cerrados" : "🟢 Abiertos"}</span>
         <span style={{ marginLeft: "auto", display: "inline-flex", gap: 6 }}>
           {lockOpts.map((o) => (
@@ -30,6 +55,17 @@ function AdminPanel(props) {
           ))}
         </span>
       </div>
+
+      {onSetPhase2 && (
+        <div className={"lockbar" + (phase2Open ? " live" : "")}>
+          <b>Fase 2 — Eliminatoria:</b>
+          <span>{phase2Open ? "🟢 Pronósticos abiertos" : "🔒 Cerrada"}</span>
+          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 6 }}>
+            <button className={"btn" + (!phase2Open ? " solid" : "")} onClick={() => onSetPhase2(false)}>Cerrar</button>
+            <button className={"btn" + (phase2Open ? " solid" : "")} onClick={() => onSetPhase2(true)}>Abrir Fase 2</button>
+          </span>
+        </div>
+      )}
 
       <nav className="tabs" style={{ marginTop: 0 }}>
         <button className={"tab" + (sub === "groups" ? " active" : "")} onClick={() => setSub("groups")}>Grupos reales</button>
@@ -56,7 +92,21 @@ function AdminPanel(props) {
 
       {sub === "scores" && (
         <div>
-          <div className="section-head"><p>Captura el <b>marcador final real</b> de cada partido de grupos.</p></div>
+          <div className="section-head" style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, flex: 1 }}>Captura el <b>marcador final real</b> de cada partido de grupos, o sincroniza directo desde la API.</p>
+            {window.QMAPI && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 7, alignItems: "flex-end" }}>
+                <div style={{ display: "flex", gap: 7 }}>
+                  <button className="btn" onClick={testAPI} disabled={syncing}>🔑 Probar clave</button>
+                  <button className={"btn solid" + (!window.QMAPI.hasKey() ? " dis" : "")} onClick={syncFromAPI} disabled={syncing || !window.QMAPI.hasKey()}>
+                    {syncing ? "⏳ Sincronizando..." : "🔄 Sync desde API"}
+                  </button>
+                </div>
+                {!window.QMAPI.hasKey() && <span style={{ fontSize: 11, color: "var(--ink-faint)" }}>Configura QM_API.KEY en firebase-config.js</span>}
+                {syncMsg && <span style={{ fontSize: 12, color: syncMsg.startsWith("✅") ? "var(--brand-ink)" : syncMsg.startsWith("❌") ? "#c00" : "var(--ink-faint)" }}>{syncMsg}</span>}
+              </div>
+            )}
+          </div>
           <div className="fx-grid">
             {QM.GROUPS.map((g) => (
               <GroupFixtures key={g.id} group={g} matches={QM.MATCHES.filter((m) => m.group === g.id)}

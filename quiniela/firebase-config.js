@@ -17,3 +17,13 @@ window.QM_FIREBASE = {
   // Clave del panel de administrador (quien captura los resultados reales).
   ADMIN_PIN: "hogar2026",
 };
+
+/* ────────────────────────────────────────────────────────────
+   API de resultados en tiempo real · api-sports.io (gratis)
+   1. Regístrate en https://dashboard.api-football.com/register
+   2. Copia tu API key y pégala abajo en KEY.
+   Con el plan gratuito tienes 100 peticiones/día (más que suficiente).
+   ──────────────────────────────────────────────────────────── */
+window.QM_API = {
+  KEY: "TU_API_KEY",   // ← pega aquí tu clave de api-sports.io
+};
