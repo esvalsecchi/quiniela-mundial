@@ -1,8 +1,101 @@
 /* Quiniela Mundial 2026 — Panel de Administrador
    Captura los resultados REALES; alimenta la tabla de ganadores. */
+
+/* ────────────────────────────────────────────────────────────────
+   BracketPairsSetup — admin configura los 16 cruces del R16
+   ──────────────────────────────────────────────────────────────── */
+function BracketPairsSetup({ bracketPairs, onSetBracketPairs }) {
+  const QM = window.QM;
+  // Lista ordenada de los 32 equipos (por nombre)
+  const ALL_TEAMS = Object.keys(QM.T).sort(function(a, b) {
+    return QM.T[a].name.localeCompare(QM.T[b].name);
+  });
+
+  // Obtener pares actuales, asegurar 16 slots
+  const pairs = [];
+  for (var i = 0; i < 16; i++) {
+    pairs.push((bracketPairs && bracketPairs[i]) ? bracketPairs[i] : { home: '', away: '' });
+  }
+
+  function setTeam(matchIdx, side, code) {
+    if (!onSetBracketPairs) return;
+    const next = pairs.map(function(p) { return { home: p.home || '', away: p.away || '' }; });
+    next[matchIdx][side] = code;
+    onSetBracketPairs(next);
+  }
+
+  // Calcular qué equipos ya están usados en otros slots (para evitar duplicados)
+  function usedTeams(excludeMatchIdx, excludeSide) {
+    const used = [];
+    pairs.forEach(function(p, idx) {
+      if (idx !== excludeMatchIdx || 'home' !== excludeSide) {
+        if (p.home) used.push(p.home);
+      }
+      if (idx !== excludeMatchIdx || 'away' !== excludeSide) {
+        if (p.away) used.push(p.away);
+      }
+    });
+    return used;
+  }
+
+  return (
+    <div>
+      <div className="section-head">
+        <h3>Cruces del Dieciseisavos (R16)</h3>
+        <p>Define qué equipo juega contra cuál en los <b>16 partidos</b> de Dieciseisavos. Los equipos seleccionados aquí serán los que aparezcan en el bracket de la Fase 2.</p>
+      </div>
+      <div className="bp-grid">
+        {pairs.map(function(pair, i) {
+          const usedH = usedTeams(i, 'home');
+          const usedA = usedTeams(i, 'away');
+          return (
+            <div key={i} className="bp-row">
+              <span className="bp-num">P{i + 1}</span>
+              <select
+                className="bp-sel"
+                value={pair.home || ''}
+                onChange={function(e) { setTeam(i, 'home', e.target.value); }}
+              >
+                <option value="">— Local —</option>
+                {ALL_TEAMS.map(function(code) {
+                  const t = QM.T[code];
+                  const disabled = usedH.includes(code) && code !== pair.home;
+                  return (
+                    <option key={code} value={code} disabled={disabled}>
+                      {t.flag} {t.name}
+                    </option>
+                  );
+                })}
+              </select>
+              <span className="bp-vs">VS</span>
+              <select
+                className="bp-sel"
+                value={pair.away || ''}
+                onChange={function(e) { setTeam(i, 'away', e.target.value); }}
+              >
+                <option value="">— Visitante —</option>
+                {ALL_TEAMS.map(function(code) {
+                  const t = QM.T[code];
+                  const disabled = usedA.includes(code) && code !== pair.away;
+                  return (
+                    <option key={code} value={code} disabled={disabled}>
+                      {t.flag} {t.name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdminPanel(props) {
   const { official, pickGroup, toggleThird, setScore, koToggle, koSingle, offPool,
-          lockMode, lockedNow, onSetLock, phase2Open, onSetPhase2, onSyncScores, onClear, onExit } = props;
+          lockMode, lockedNow, onSetLock, phase2Open, onSetPhase2, onSyncScores, onClear, onExit,
+          bracketPairs, onSetBracketPairs, officialKoScores, onSetBracketScoreOff } = props;
   const { useState } = React;
   const [sub, setSub] = useState("scores");
   const [syncing, setSyncing] = useState(false);
@@ -72,6 +165,8 @@ function AdminPanel(props) {
         <button className={"tab" + (sub === "thirds" ? " active" : "")} onClick={() => setSub("thirds")}>Mejores terceros</button>
         <button className={"tab" + (sub === "scores" ? " active" : "")} onClick={() => setSub("scores")}>Marcadores reales</button>
         <button className={"tab" + (sub === "ko" ? " active" : "")} onClick={() => setSub("ko")}>Eliminatoria real</button>
+        <button className={"tab" + (sub === "bracketPairs" ? " active" : "")} onClick={() => setSub("bracketPairs")}>Bracket R16</button>
+        <button className={"tab" + (sub === "bracketOff" ? " active" : "")} onClick={() => setSub("bracketOff")}>Bracket oficial</button>
       </nav>
 
       {sub === "groups" && (
@@ -120,6 +215,28 @@ function AdminPanel(props) {
         <div>
           <div className="section-head"><p>Arma la eliminatoria <b>real</b>: quién avanzó en cada ronda, campeón y 3.er lugar.</p></div>
           <KnockoutFlow pool={offPool} ko={official.ko || {}} onToggle={koToggle} onSetSingle={koSingle} />
+        </div>
+      )}
+
+      {sub === "bracketPairs" && (
+        <BracketPairsSetup
+          bracketPairs={bracketPairs || []}
+          onSetBracketPairs={onSetBracketPairs}
+        />
+      )}
+
+      {sub === "bracketOff" && (
+        <div>
+          <div className="section-head">
+            <h3>Bracket oficial — marcadores reales</h3>
+            <p>Ingresa los marcadores reales de cada partido de la eliminatoria.</p>
+          </div>
+          <BracketView
+            r16Pairs={bracketPairs || []}
+            koScores={officialKoScores || {}}
+            onScoreChange={onSetBracketScoreOff}
+            locked={false}
+          />
         </div>
       )}
 

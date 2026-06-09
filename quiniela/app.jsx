@@ -131,6 +131,57 @@ function App() {
   const ko2Toggle = (key, code) => updatePlayerKo2((p) => { p.ko2[key] = toggleInSet(p.ko2[key], code, CAPS[key]); });
   const ko2Single = (key, code) => updatePlayerKo2((p) => { p.ko2[key] = p.ko2[key] === code ? null : code; });
 
+  function setBracketScore(round, matchIdx, k, val) {
+    if (!phase2Open) return;
+    setAll((prev) => {
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev[pid])));
+      if (!cur.koScores) cur.koScores = {};
+      if (round === 'fin' || round === 'third') {
+        if (!cur.koScores[round] || typeof cur.koScores[round] !== 'object' || Array.isArray(cur.koScores[round])) {
+          cur.koScores[round] = {};
+        }
+        cur.koScores[round][k] = val;
+      } else {
+        if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
+        if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
+        cur.koScores[round][matchIdx][k] = val;
+      }
+      // Derive ko2 from bracket
+      const r16Pairs = (official.bracketPairs || {}).r16 || [];
+      if (window.buildBracket && r16Pairs.length > 0) {
+        const bracket = window.buildBracket(r16Pairs, cur.koScores);
+        if (bracket) cur.ko2 = window.deriveKO(bracket);
+      }
+      QMCloud.savePlayer(pid, cur);
+      return { ...prev, [pid]: cur };
+    });
+  }
+
+  function setBracketScoreOff(round, matchIdx, k, val) {
+    setOfficial((prev) => {
+      const cur = JSON.parse(JSON.stringify(prev || {}));
+      if (!cur.koScores) cur.koScores = {};
+      if (round === 'fin' || round === 'third') {
+        if (!cur.koScores[round] || typeof cur.koScores[round] !== 'object' || Array.isArray(cur.koScores[round])) {
+          cur.koScores[round] = {};
+        }
+        cur.koScores[round][k] = val;
+      } else {
+        if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
+        if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
+        cur.koScores[round][matchIdx][k] = val;
+      }
+      // Derive official ko from bracket
+      const r16Pairs = (cur.bracketPairs || {}).r16 || [];
+      if (window.buildBracket && r16Pairs.length > 0) {
+        const bracket = window.buildBracket(r16Pairs, cur.koScores);
+        if (bracket) cur.ko = window.deriveKO(bracket);
+      }
+      QMCloud.saveOfficial(cur);
+      return cur;
+    });
+  }
+
   function resetPlayer() {
     if (lockedNow) { alert("Los pronósticos están cerrados."); return; }
     if (!confirm(`¿Borrar los pronósticos de ${QM.PLAYERS.find((x) => x.id === pid).name}?`)) return;
@@ -313,12 +364,14 @@ function App() {
             <div style={{ marginTop: 32 }}>
               <div className="section-head">
                 <h2>Fase 2 — Eliminatoria real 🏆</h2>
-                <p>Los <b>32 equipos que realmente clasificaron</b>. Arma tu bracket de nuevo — los puntos se suman a los de la Fase 1.</p>
+                <p>Predice el <b>marcador</b> de cada partido. El ganador avanza automáticamente.</p>
               </div>
-              {offPool.length < 32 && (
-                <div className="bhint">⏳ Esperando que el admin termine de cargar los clasificados reales. Llevan <b>{offPool.length}/32</b>.</div>
-              )}
-              <KnockoutFlow pool={offPool} ko={pred.ko2 || blankKO()} onToggle={ko2Toggle} onSetSingle={ko2Single} locked={false} />
+              <BracketView
+                r16Pairs={(official.bracketPairs || {}).r16 || []}
+                koScores={pred.koScores || {}}
+                onScoreChange={setBracketScore}
+                locked={false}
+              />
             </div>
           )}
         </section>
@@ -369,7 +422,15 @@ function App() {
                 lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
                 phase2Open={phase2Open} onSetPhase2={setPhase2}
                 onSyncScores={syncOfficialScores}
-                onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }} />
+                onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }}
+                bracketPairs={(official.bracketPairs || {}).r16 || []}
+                onSetBracketPairs={(pairs) => {
+                  const next = { ...official, bracketPairs: { ...(official.bracketPairs || {}), r16: pairs } };
+                  setOfficial(next); QMCloud.saveOfficial(next);
+                }}
+                officialKoScores={official.koScores || {}}
+                onSetBracketScoreOff={setBracketScoreOff}
+              />
             )}
           </section>
         )}

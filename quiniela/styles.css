@@ -419,6 +419,42 @@ footer.foot { text-align: center; color: var(--ink-faint); font-size: 12.5px; pa
 .champ-banner .cb-k { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; color: var(--gold-deep); }
 .champ-banner .cb-team { font-family: var(--font-display); font-weight: 800; font-size: 24px; margin-top: 2px; }
 
+/* ============================================================ BRACKET (Fase 2 marcadores) */
+.br-scroll { overflow-x: auto; padding: 4px 2px 24px; }
+.br-flow { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 14px; min-width: 1060px; }
+.br-round { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.br-round-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--line-soft); }
+.br-round-title { font-family: var(--font-display); font-weight: 800; font-size: 14.5px; }
+.br-round-sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+.br-round-matches { padding: 7px; display: flex; flex-direction: column; gap: 5px; }
+
+.ko-mc { background: var(--paper-2); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; transition: border-color .12s; }
+.ko-mc.empty { display: flex; align-items: center; justify-content: center; min-height: 68px; }
+.ko-mc-tbd { font-size: 12px; color: var(--ink-faint); }
+.ko-mc-label { display: block; font-family: var(--font-display); font-weight: 700; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-faint); margin-bottom: 5px; }
+.ko-mc-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.ko-mc-row.away { flex-direction: row-reverse; justify-content: flex-end; }
+.ko-mc-flag { font-size: 15px; flex: 0 0 auto; line-height: 1; }
+.ko-mc-name { flex: 1; font-weight: 600; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); }
+.ko-mc-row.ko-w .ko-mc-name { color: var(--ink); font-weight: 700; }
+.ko-mc-row.ko-l { opacity: 0.38; }
+.ko-mc-num { width: 34px; height: 32px; text-align: center; border: 1.5px solid var(--line); border-radius: 7px; background: var(--card); font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--ink); -moz-appearance: textfield; flex: 0 0 auto; }
+.ko-mc-num::-webkit-outer-spin-button, .ko-mc-num::-webkit-inner-spin-button { -webkit-appearance: none; }
+.ko-mc-num:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px oklch(0.58 0.17 152/0.15); }
+.ko-mc-num:disabled { opacity: 0.6; cursor: not-allowed; background: var(--paper-2); }
+.ko-mc-sep { display: flex; align-items: center; justify-content: center; padding: 1px 0; }
+.ko-mc-vs { font-size: 10px; color: var(--ink-faint); font-weight: 700; }
+.ko-mc-adv { font-size: 10.5px; color: var(--brand-ink); font-weight: 700; }
+.ko-mc.ko-decided { border-color: oklch(0.58 0.17 152 / 0.35); background: oklch(0.98 0.015 152 / 0.5); }
+
+/* Bracket admin setup */
+.bp-grid { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.bp-row { display: grid; grid-template-columns: 32px 1fr auto 1fr; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+.bp-num { font-family: var(--font-display); font-weight: 800; font-size: 11px; color: var(--ink-faint); }
+.bp-sel { font-family: var(--font-body); font-weight: 600; font-size: 13px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper-2); padding: 6px 8px; color: var(--ink); cursor: pointer; width: 100%; }
+.bp-sel:focus { outline: none; border-color: var(--brand); }
+.bp-vs { font-size: 11px; font-weight: 700; color: var(--ink-faint); text-align: center; }
+
 /* ============================================================ PRINT */
 .print-only { display: none; }
 @media print {

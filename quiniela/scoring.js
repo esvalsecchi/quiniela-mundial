@@ -53,14 +53,24 @@
     if (pk.champ && ok.champ && pk.champ === ok.champ) R.champ += P.campeon;
     if (pk.third && ok.third && pk.third === ok.third) R.third += P.tercer;
 
-    // Fase 2 — eliminatoria post-grupos
-    const pk2 = pred.ko2 || {};
-    inter(pk2.r16, ok.r16).forEach(() => { R.octavos += P.octavos; });
-    inter(pk2.qf, ok.qf).forEach(() => { R.cuartos += P.cuartos; });
-    inter(pk2.sf, ok.sf).forEach(() => { R.semis += P.semis; });
-    inter(pk2.fin, ok.fin).forEach(() => { R.finals += P.final; });
-    if (pk2.champ && ok.champ && pk2.champ === ok.champ) R.champ += P.campeon;
-    if (pk2.third && ok.third && pk2.third === ok.third) R.third += P.tercer;
+    // Fase 2 — eliminatoria post-grupos (bracket por marcadores)
+    let pk2 = pred.ko2 || {};
+    let ok2 = ok; // por defecto usa mismo ok oficial
+    // Si hay bracket de marcadores, derivar ko desde el bracket
+    if (pred.koScores && official.bracketPairs && (official.bracketPairs.r16 || []).length > 0) {
+      const playerBracket = window.buildBracket && window.buildBracket(official.bracketPairs.r16, pred.koScores);
+      if (playerBracket) pk2 = window.deriveKO(playerBracket);
+    }
+    if (official.koScores && official.bracketPairs && (official.bracketPairs.r16 || []).length > 0) {
+      const offBracket = window.buildBracket && window.buildBracket(official.bracketPairs.r16, official.koScores);
+      if (offBracket) ok2 = window.deriveKO(offBracket);
+    }
+    inter(pk2.r16, ok2.r16).forEach(() => { R.octavos += P.octavos; });
+    inter(pk2.qf, ok2.qf).forEach(() => { R.cuartos += P.cuartos; });
+    inter(pk2.sf, ok2.sf).forEach(() => { R.semis += P.semis; });
+    inter(pk2.fin, ok2.fin).forEach(() => { R.finals += P.final; });
+    if (pk2.champ && ok2.champ && pk2.champ === ok2.champ) R.champ += P.campeon;
+    if (pk2.third && ok2.third && pk2.third === ok2.third) R.third += P.tercer;
 
     R.total = R.groupPos + R.thirds + R.scores + R.octavos + R.cuartos + R.semis + R.finals + R.champ + R.third;
     // agregados para la tabla
