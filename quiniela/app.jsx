@@ -308,7 +308,7 @@ function App() {
         <nav className="tabs no-print">
           <button className={"tab" + (tab === "scores" ? " active" : "")} onClick={() => setTab("scores")}>Marcadores <span className="tnum">{scoresDone}/72</span></button>
           <button className={"tab" + (tab === "groups" ? " active" : "")} onClick={() => setTab("groups")}>Fase de Grupos <span className="tnum">{groupsDone}/12</span></button>
-          <button className={"tab" + (tab === "ko" ? " active" : "")} onClick={() => setTab("ko")}>Camino al Título <span className="tnum">{pred.ko.champ ? "🏆" : "—"}</span></button>
+          <button className={"tab" + (tab === "ko" ? " active" : "")} onClick={() => setTab("ko")}>Camino al Título <span className="tnum">{phase2Open ? ((pred.koScores && pred.koScores.fin && pred.koScores.fin.h !== '' && pred.koScores.fin.h != null) ? "🏆" : "—") : "⏳"}</span></button>
           <button className={"tab" + (tab === "table" ? " active" : "")} onClick={() => setTab("table")}>🏆 Tabla</button>
           <button className={"tab" + (tab === "rules" ? " active" : "")} onClick={() => setTab("rules")}>Reglas</button>
           {isAdmin && <button className={"tab" + (tab === "admin" ? " active" : "")} onClick={() => setTab("admin")}>⚙️ Admin</button>}
@@ -353,26 +353,19 @@ function App() {
         </section>
 
         {/* KNOCKOUT */}
-        <section className="section print-section" style={{ display: tab === "ko" ? "block" : "none" }}>
+        <section className="section" style={{ display: tab === "ko" ? "block" : "none" }}>
           <div className="section-head">
-            <h2>{phase2Open ? "Fase 1 — Pronóstico pre-torneo" : "Camino al Título"}</h2>
-            <p>Avanza a los 32 clasificados por las rondas: <b>Dieciseisavos → Octavos → Cuartos → Semifinales → Final</b>. Toca un equipo para pasarlo a la siguiente ronda.</p>
+            <h2>Camino al Título</h2>
+            <p>Predice el <b>marcador</b> de cada partido. El ganador avanza automáticamente a la siguiente ronda. Los puntos se acumulan con la Fase de Grupos.</p>
           </div>
-          <KnockoutFlow pool={pool} ko={pred.ko} onToggle={koToggle} onSetSingle={koSingle} locked={lockedNow} />
-
-          {phase2Open && (
-            <div style={{ marginTop: 32 }}>
-              <div className="section-head">
-                <h2>Fase 2 — Eliminatoria real 🏆</h2>
-                <p>Predice el <b>marcador</b> de cada partido. El ganador avanza automáticamente.</p>
-              </div>
-              <BracketView
-                r16Pairs={(official.bracketPairs || {}).r16 || []}
-                koScores={pred.koScores || {}}
-                onScoreChange={setBracketScore}
-                locked={false}
-              />
-            </div>
+          {tab === "ko" && (
+            <BracketView
+              r16Pairs={(official.bracketPairs || {}).r16 || []}
+              koScores={pred.koScores || {}}
+              onScoreChange={phase2Open ? setBracketScore : null}
+              locked={!phase2Open}
+              phase2Open={phase2Open}
+            />
           )}
         </section>
 

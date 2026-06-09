@@ -215,19 +215,16 @@ function BracketRound({ title, sub, matches, round, locked, onScoreChange }) {
 /* ────────────────────────────────────────────────────────────────
    BracketView — bracket completo con todas las rondas
    ──────────────────────────────────────────────────────────────── */
-function BracketView({ r16Pairs, koScores, onScoreChange, locked }) {
-  r16Pairs = r16Pairs || [];
+function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) {
+  // Siempre mostrar 16 slots — rellenar con vacíos si el admin aún no configuró los cruces
+  const rawPairs = r16Pairs || [];
+  const fullPairs = Array.from({ length: 16 }, function(_, i) {
+    return rawPairs[i] && (rawPairs[i].home || rawPairs[i].away) ? rawPairs[i] : { home: null, away: null };
+  });
+  const pairsReady = rawPairs.filter(function(p) { return p && p.home && p.away; }).length;
   koScores = koScores || {};
 
-  if (!r16Pairs.length) {
-    return (
-      <div className="bhint">
-        ⏳ El admin aún no configuró los cruces del Dieciseisavos. Vuelve cuando los pares estén listos.
-      </div>
-    );
-  }
-
-  const bracket = buildBracket(r16Pairs, koScores);
+  const bracket = buildBracket(fullPairs, koScores);
 
   // Columna final: Final + 3er lugar
   const finMatch = bracket.fin;
@@ -236,6 +233,17 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked }) {
   const champT = champ ? KT2[champ] : null;
 
   return (
+    <div>
+      {pairsReady < 16 && (
+        <div className="bhint" style={{ marginBottom: 16 }}>
+          ⏳ <b>Cruces del R16 pendientes</b> — el admin los configura cuando terminen los grupos ({pairsReady}/16 definidos). El bracket aparece aquí en cuanto estén listos.
+        </div>
+      )}
+      {pairsReady === 16 && !phase2Open && (
+        <div className="bhint" style={{ marginBottom: 16, background: "oklch(0.97 0.04 85)", borderColor: "var(--gold-deep)" }}>
+          🔒 <b>Bracket listo.</b> El admin abrirá la Fase 2 cuando empiece la eliminatoria para que puedas llenar los marcadores.
+        </div>
+      )}
     <div className="br-scroll">
       <div className="br-flow">
         <BracketRound
@@ -306,6 +314,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked }) {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
