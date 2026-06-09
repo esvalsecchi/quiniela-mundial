@@ -68,6 +68,19 @@ body {
 }
 .masthead .wrap { position: relative; padding-top: 26px; padding-bottom: 26px; }
 .mast-top { display: flex; align-items: center; gap: 12px; }
+
+.mast-actions { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+.mast-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.02em;
+  border: 1.5px solid oklch(1 0 0 / 0.20); background: transparent;
+  color: oklch(0.80 0.01 270); padding: 6px 10px; border-radius: 9px;
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.mast-btn:hover { background: oklch(1 0 0 / 0.09); border-color: oklch(1 0 0 / 0.38); color: white; }
+.mast-btn.mast-admin { border-color: oklch(0.72 0.14 85 / 0.45); color: var(--gold); }
+.mast-btn.mast-admin:hover { background: oklch(0.72 0.14 85 / 0.10); border-color: var(--gold); }
 .brand-badge {
   font-family: var(--font-display); font-weight: 800; font-size: 12px; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--ink);

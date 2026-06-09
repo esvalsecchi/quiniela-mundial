@@ -54,7 +54,7 @@ function App() {
   const [official, setOfficial] = useState({});
   const [config, setConfig] = useState({});
   const [pid, setPid] = useState(QM.PLAYERS[0].id);
-  const [tab, setTab] = useState("groups");
+  const [tab, setTab] = useState("scores");
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -215,7 +215,18 @@ function App() {
           <div className="mast-top">
             <span className="brand-badge">{QM.META.brand}</span>
             <span className="brand-sub">Porra familiar · Edición 2026</span>
-            <span style={{ marginLeft: "auto" }} className={"cloud-pill no-print " + (QMCloud.enabled ? "on" : "off")}>
+            <div className="mast-actions no-print">
+              <button className="mast-btn" title="Borrar pronósticos" onClick={resetPlayer}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+              <button className="mast-btn" title="Imprimir quiniela" onClick={() => window.print()}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </button>
+              {isAdmin
+                ? <button className="mast-btn mast-admin" onClick={() => { setIsAdmin(false); if (tab === "admin") setTab("table"); }}>✕ Salir admin</button>
+                : <button className="mast-btn mast-admin" onClick={loginAdmin}>🔐 Admin</button>}
+            </div>
+            <span className={"cloud-pill no-print " + (QMCloud.enabled ? "on" : "off")}>
               <span className="dot"></span>{QMCloud.enabled ? "En la nube" : "Este dispositivo"}
             </span>
           </div>
@@ -239,20 +250,13 @@ function App() {
               </button>
             ))}
           </div>
-          <div className="pb-actions">
-            <button className="btn" onClick={resetPlayer}>Borrar</button>
-            <button className="btn" onClick={() => window.print()}>Imprimir</button>
-            {isAdmin
-              ? <button className="btn solid" onClick={() => { setIsAdmin(false); if (tab === "admin") setTab("table"); }}>Salir admin</button>
-              : <button className="btn" onClick={loginAdmin}>🔐 Admin</button>}
-          </div>
         </div>
       </div>
 
       <div className="wrap">
         <nav className="tabs no-print">
-          <button className={"tab" + (tab === "groups" ? " active" : "")} onClick={() => setTab("groups")}>Fase de Grupos <span className="tnum">{groupsDone}/12</span></button>
           <button className={"tab" + (tab === "scores" ? " active" : "")} onClick={() => setTab("scores")}>Marcadores <span className="tnum">{scoresDone}/72</span></button>
+          <button className={"tab" + (tab === "groups" ? " active" : "")} onClick={() => setTab("groups")}>Fase de Grupos <span className="tnum">{groupsDone}/12</span></button>
           <button className={"tab" + (tab === "ko" ? " active" : "")} onClick={() => setTab("ko")}>Camino al Título <span className="tnum">{pred.ko.champ ? "🏆" : "—"}</span></button>
           <button className={"tab" + (tab === "table" ? " active" : "")} onClick={() => setTab("table")}>🏆 Tabla</button>
           <button className={"tab" + (tab === "rules" ? " active" : "")} onClick={() => setTab("rules")}>Reglas</button>
