@@ -107,7 +107,6 @@
     { id: "iker",  name: "Iker",        color: "oklch(0.64 0.15 233)" },
     { id: "guille",name: "Guille",      color: "oklch(0.56 0.18 268)" },
     { id: "dani",  name: "Dani",        color: "oklch(0.53 0.20 298)" },
-    { id: "yesi",  name: "Yesi",        color: "oklch(0.60 0.21 352)" },
     { id: "este",  name: "Esteban",     color: "oklch(0.62 0.19 12)" },
   ];
 
