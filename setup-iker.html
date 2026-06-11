@@ -16,108 +16,51 @@
 </style>
 </head>
 <body>
-<h2>⚽ Predicción de Iker — Mundial 2026</h2>
+<h2>⚽ Marcadores de Iker — Mundial 2026</h2>
 
 <div class="note">
-  <b>Criterios usados (más allá del ranking FIFA):</b><br>
-  • <b>Messi (38 años)</b> — Argentina sigue fuerte pero él ya no puede cargar al equipo solo. No es favorito al título.<br>
-  • <b>Ronaldo (41 años)</b> — Portugal depende más del colectivo. Colombia lleva mejor momento y lo supera en el grupo.<br>
-  • <b>Mbappé (27 años, Real Madrid)</b> — Plena madurez. Francia es <b>el favorito</b> de Iker.<br>
-  • <b>Haaland (26 años)</b> — Noruega llega fuerte gracias a él. Clasifica 2.º en grupo con Francia.<br>
-  • <b>Vinicius Jr. (26 años)</b> — Brasil es la gran amenaza. Llega a Semifinales.<br>
-  • Colombia en racha brillante (sin depender de una sola estrella).<br>
-  • España y Alemania: potencias consolidadas con generaciones jóvenes en plenitud.
+  Solo carga los <b>72 marcadores</b> de fase de grupos. Los grupos, mejores terceros y bracket los llena Iker en la quiniela.<br><br>
+  <b>Criterios para los marcadores:</b>
+  Messi (38) y Ronaldo (41) con impacto reducido · Mbappé (27) en plenitud → Francia favorita ·
+  Haaland potencia a Noruega · Colombia sin dependencia de una estrella · Brasil con Vinicius dominante.
 </div>
 
-<button onclick="guardar()">Cargar predicción completa de Iker ▶</button>
+<button onclick="guardar()">Cargar 72 marcadores de Iker ▶</button>
 <div id="out"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
-const pred = {
-  // ── POSICIONES DE GRUPO ─────────────────────────────────────────────────
-  groups: {
-    A: { first: "MEX", second: "KOR", third: "CZE" }, // México local, Corea supera a Chequia
-    B: { first: "SUI", second: "CAN", third: "BIH" }, // Suiza sólida, Canadá local
-    C: { first: "BRA", second: "MAR", third: "SCO" }, // Brasil dominante
-    D: { first: "USA", second: "TUR", third: "PAR" }, // USA local, Turquía en ascenso
-    E: { first: "GER", second: "ECU", third: "CIV" }, // Alemania, Ecuador supera a Marfil
-    F: { first: "NED", second: "JPN", third: "SWE" }, // Países Bajos + Japón sorpresa
-    G: { first: "BEL", second: "EGY", third: "IRN" }, // Bélgica, Egipto supera a Irán
-    H: { first: "ESP", second: "URU", third: "KSA" }, // España clara, Uruguay histórico
-    I: { first: "FRA", second: "NOR", third: "SEN" }, // Francia + Noruega (Haaland)
-    J: { first: "ARG", second: "AUT", third: "ALG" }, // Argentina aunque Messi con 38
-    K: { first: "COL", second: "POR", third: "COD" }, // Colombia primero! Portugal 2.º
-    L: { first: "ENG", second: "CRO", third: "GHA" }, // Inglaterra, Croacia veterana
-  },
-
-  // ── MEJORES TERCEROS ─────────────────────────────────────────────────────
-  // CZE(A), BIH(B), SWE(F), SEN(I), ALG(J), PAR(D), GHA(L), CIV(E)
-  thirds: ["CZE", "BIH", "PAR", "SWE", "SEN", "ALG", "GHA", "CIV"],
-
-  // ── 72 MARCADORES DE FASE DE GRUPOS ──────────────────────────────────────
-  scores: {
-    // Grupo A: MEX(a) RSA(b) KOR(c) CZE(d)
-    // A-0:MEX vs RSA  A-1:KOR vs CZE  A-2:MEX vs KOR  A-3:CZE vs RSA  A-4:CZE vs MEX  A-5:RSA vs KOR
-    "A-0":{h:2,a:0}, "A-1":{h:2,a:1}, "A-2":{h:1,a:0}, "A-3":{h:2,a:0}, "A-4":{h:1,a:2}, "A-5":{h:0,a:2},
-
-    // Grupo B: CAN(a) BIH(b) QAT(c) SUI(d)
-    "B-0":{h:2,a:1}, "B-1":{h:0,a:2}, "B-2":{h:2,a:0}, "B-3":{h:1,a:1}, "B-4":{h:1,a:0}, "B-5":{h:3,a:0},
-
-    // Grupo C: BRA(a) MAR(b) HAI(c) SCO(d)
-    "C-0":{h:3,a:1}, "C-1":{h:0,a:1}, "C-2":{h:4,a:0}, "C-3":{h:0,a:2}, "C-4":{h:1,a:3}, "C-5":{h:2,a:0},
-
-    // Grupo D: USA(a) PAR(b) AUS(c) TUR(d)
-    "D-0":{h:2,a:0}, "D-1":{h:0,a:2}, "D-2":{h:3,a:0}, "D-3":{h:2,a:0}, "D-4":{h:0,a:2}, "D-5":{h:2,a:1},
-
-    // Grupo E: GER(a) CUW(b) CIV(c) ECU(d)
-    "E-0":{h:4,a:0}, "E-1":{h:0,a:2}, "E-2":{h:2,a:0}, "E-3":{h:2,a:0}, "E-4":{h:1,a:2}, "E-5":{h:0,a:2},
-
-    // Grupo F: NED(a) JPN(b) SWE(c) TUN(d)
-    "F-0":{h:1,a:1}, "F-1":{h:2,a:0}, "F-2":{h:3,a:1}, "F-3":{h:0,a:2}, "F-4":{h:0,a:2}, "F-5":{h:1,a:0},
-
-    // Grupo G: BEL(a) EGY(b) IRN(c) NZL(d)
-    "G-0":{h:2,a:0}, "G-1":{h:2,a:0}, "G-2":{h:2,a:0}, "G-3":{h:0,a:2}, "G-4":{h:0,a:3}, "G-5":{h:2,a:1},
-
-    // Grupo H: ESP(a) CPV(b) KSA(c) URU(d)
-    "H-0":{h:4,a:0}, "H-1":{h:0,a:3}, "H-2":{h:3,a:0}, "H-3":{h:2,a:0}, "H-4":{h:0,a:2}, "H-5":{h:0,a:1},
-
-    // Grupo I: FRA(a) SEN(b) IRQ(c) NOR(d)
-    "I-0":{h:1,a:0}, "I-1":{h:0,a:2}, "I-2":{h:2,a:0}, "I-3":{h:2,a:0}, "I-4":{h:1,a:2}, "I-5":{h:2,a:0},
-
-    // Grupo J: ARG(a) ALG(b) AUT(c) JOR(d)
-    "J-0":{h:3,a:0}, "J-1":{h:2,a:0}, "J-2":{h:2,a:1}, "J-3":{h:0,a:2}, "J-4":{h:0,a:3}, "J-5":{h:1,a:1},
-
-    // Grupo K: POR(a) COD(b) UZB(c) COL(d)
-    "K-0":{h:2,a:0}, "K-1":{h:0,a:2}, "K-2":{h:3,a:0}, "K-3":{h:3,a:0}, "K-4":{h:2,a:1}, "K-5":{h:2,a:0},
-
-    // Grupo L: ENG(a) CRO(b) GHA(c) PAN(d)
-    "L-0":{h:2,a:1}, "L-1":{h:2,a:0}, "L-2":{h:2,a:0}, "L-3":{h:0,a:3}, "L-4":{h:0,a:3}, "L-5":{h:2,a:1},
-  },
-
-  // ── BRACKET ELIMINATORIO (chip-picker) ───────────────────────────────────
-  // Pool de 32: 12 primeros + 12 segundos + 8 mejores terceros
-  ko: {
-    // 16 que pasan de Dieciseisavos a Octavos
-    r16: ["BRA","FRA","ESP","COL","GER","ENG","NED","MEX","URU","JPN","TUR","NOR","AUT","CRO","CAN","ARG"],
-    // 8 que pasan a Cuartos (Mbappé y Brasil los favoritos de Iker)
-    qf:  ["BRA","FRA","ESP","COL","GER","ENG","NED","ARG"],
-    // 4 semifinalistas (Francia y Brasil de un lado, Colombia e Inglaterra del otro)
-    sf:  ["FRA","COL","BRA","ENG"],
-    // 2 finalistas
-    fin: ["FRA","COL"],
-    // Francia campeona del mundo! (Mbappé 27 años, plenitud)
-    champ: "FRA",
-    // Brasil tercer lugar (Vinicius Jr. gran torneo)
-    third: "BRA",
-  }
+const scores = {
+  // Grupo A: MEX(a) RSA(b) KOR(c) CZE(d)
+  "A-0":{h:2,a:0}, "A-1":{h:2,a:1}, "A-2":{h:1,a:0}, "A-3":{h:2,a:0}, "A-4":{h:1,a:2}, "A-5":{h:0,a:2},
+  // Grupo B: CAN(a) BIH(b) QAT(c) SUI(d)
+  "B-0":{h:2,a:1}, "B-1":{h:0,a:2}, "B-2":{h:2,a:0}, "B-3":{h:1,a:1}, "B-4":{h:1,a:0}, "B-5":{h:3,a:0},
+  // Grupo C: BRA(a) MAR(b) HAI(c) SCO(d)
+  "C-0":{h:3,a:1}, "C-1":{h:0,a:1}, "C-2":{h:4,a:0}, "C-3":{h:0,a:2}, "C-4":{h:1,a:3}, "C-5":{h:2,a:0},
+  // Grupo D: USA(a) PAR(b) AUS(c) TUR(d)
+  "D-0":{h:2,a:0}, "D-1":{h:0,a:2}, "D-2":{h:3,a:0}, "D-3":{h:2,a:0}, "D-4":{h:0,a:2}, "D-5":{h:2,a:1},
+  // Grupo E: GER(a) CUW(b) CIV(c) ECU(d)
+  "E-0":{h:4,a:0}, "E-1":{h:0,a:2}, "E-2":{h:2,a:0}, "E-3":{h:2,a:0}, "E-4":{h:1,a:2}, "E-5":{h:0,a:2},
+  // Grupo F: NED(a) JPN(b) SWE(c) TUN(d)
+  "F-0":{h:1,a:1}, "F-1":{h:2,a:0}, "F-2":{h:3,a:1}, "F-3":{h:0,a:2}, "F-4":{h:0,a:2}, "F-5":{h:1,a:0},
+  // Grupo G: BEL(a) EGY(b) IRN(c) NZL(d)
+  "G-0":{h:2,a:0}, "G-1":{h:2,a:0}, "G-2":{h:2,a:0}, "G-3":{h:0,a:2}, "G-4":{h:0,a:3}, "G-5":{h:2,a:1},
+  // Grupo H: ESP(a) CPV(b) KSA(c) URU(d)
+  "H-0":{h:4,a:0}, "H-1":{h:0,a:3}, "H-2":{h:3,a:0}, "H-3":{h:2,a:0}, "H-4":{h:0,a:2}, "H-5":{h:0,a:1},
+  // Grupo I: FRA(a) SEN(b) IRQ(c) NOR(d)
+  "I-0":{h:1,a:0}, "I-1":{h:0,a:2}, "I-2":{h:2,a:0}, "I-3":{h:2,a:0}, "I-4":{h:1,a:2}, "I-5":{h:2,a:0},
+  // Grupo J: ARG(a) ALG(b) AUT(c) JOR(d)
+  "J-0":{h:3,a:0}, "J-1":{h:2,a:0}, "J-2":{h:2,a:1}, "J-3":{h:0,a:2}, "J-4":{h:0,a:3}, "J-5":{h:1,a:1},
+  // Grupo K: POR(a) COD(b) UZB(c) COL(d)
+  "K-0":{h:2,a:0}, "K-1":{h:0,a:2}, "K-2":{h:3,a:0}, "K-3":{h:3,a:0}, "K-4":{h:2,a:1}, "K-5":{h:2,a:0},
+  // Grupo L: ENG(a) CRO(b) GHA(c) PAN(d)
+  "L-0":{h:2,a:1}, "L-1":{h:2,a:0}, "L-2":{h:2,a:0}, "L-3":{h:0,a:3}, "L-4":{h:0,a:3}, "L-5":{h:2,a:1},
 };
 
 function guardar() {
   const out = document.getElementById("out");
   out.innerHTML = "⏳ Conectando con Firebase...";
-
   try {
     if (!firebase.apps.length) {
       firebase.initializeApp({
@@ -130,20 +73,10 @@ function guardar() {
       });
     }
     const db = firebase.firestore();
-    db.collection("quiniela").doc("player_iker").set(pred)
+    db.collection("quiniela").doc("player_iker").set({ scores }, { merge: true })
       .then(() => {
-        const scores = Object.keys(pred.scores).length;
-        const groups = Object.keys(pred.groups).length;
-        out.innerHTML = [
-          '<p class="ok">✅ Predicción de Iker cargada!</p>',
-          '<ul style="font-size:14px;line-height:1.8;">',
-          '<li>🗂 ' + groups + '/12 grupos con posiciones</li>',
-          '<li>🌟 8 mejores terceros elegidos</li>',
-          '<li>⚽ ' + scores + '/72 marcadores de fase de grupos</li>',
-          '<li>🏆 Bracket: <b>Francia Campeón</b> · Brasil 3.er lugar</li>',
-          '<li>🌟 Apuesta diferente: <b>Colombia finalista</b> (sin Ronaldo/Messi)</li>',
-          '</ul>'
-        ].join('');
+        out.innerHTML = '<p class="ok">✅ ' + Object.keys(scores).length + ' marcadores de Iker guardados!</p>'
+          + '<p>Los grupos, mejores terceros y bracket los llena Iker en la quiniela.</p>';
       })
       .catch((err) => {
         out.innerHTML = '<p class="err">❌ Error: ' + err.message + '</p>';
