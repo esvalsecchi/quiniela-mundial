@@ -254,7 +254,12 @@ function App() {
 
   const standings = useMemo(() => QMScore.standings(all, official), [all, official]);
   const hasResults = QMScore.hasOfficialResults(official);
-  const playerHasChamp = (id) => { const p = all[id]; return !!(p && p.ko && p.ko.champ); };
+  const playerHasChamp = (id) => {
+    const p = all[id];
+    if (!p) return false;
+    const fin = p.koScores && p.koScores.fin;
+    return !!(fin && fin.h !== '' && fin.h != null && fin.a !== '' && fin.a != null);
+  };
   const curPlayer = QM.PLAYERS.find((x) => x.id === pid);
 
   return (
