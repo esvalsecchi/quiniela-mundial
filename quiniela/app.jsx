@@ -226,7 +226,13 @@ function App() {
   const [pid, setPid] = useState(null);
   const [tab, setTab] = useState("scores");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const autoSyncingRef = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!group) return undefined;
@@ -291,7 +297,7 @@ function App() {
   }
   function matchClosed(mid) {
     const m = QM.MATCHES.find((x) => x.id === mid);
-    const byKickoff = m && m.lockAt ? Date.now() >= Date.parse(m.lockAt) : false;
+    const byKickoff = m && m.lockAt ? now >= Date.parse(m.lockAt) : false;
     return lockedNow || hasOfficialScore(mid) || byKickoff;
   }
   function groupClosed(gid) {
@@ -427,7 +433,10 @@ function App() {
 
   function resetPlayer() {
     if (!pid) return;
-    if (lockedNow) { alert("Los pronósticos están cerrados."); return; }
+    if (lockedNow || QM.MATCHES.some((m) => matchClosed(m.id))) {
+      alert("Algunos pronósticos ya están cerrados y no se pueden borrar.");
+      return;
+    }
     const player = players.find((x) => x.id === pid);
     if (!player) return;
     if (!confirm(`¿Borrar los pronósticos de ${player.name}?`)) return;
@@ -721,7 +730,7 @@ function App() {
           <div className="lockbar no-print"><b>🔒 Pronósticos cerrados.</b><span>El admin cerró la quiniela completa. Revisa la <b>Tabla</b>.</span></div>
         )}
         {!lockedNow && closedScores > 0 && tab === "scores" && (
-          <div className="lockbar live no-print"><b>Marcadores parcialmente cerrados.</b><span>{closedScores}/72 partidos ya no se pueden editar; el resto sigue abierto.</span></div>
+          <div className="lockbar live no-print"><b>Marcadores parcialmente cerrados.</b><span>{closedScores}/72 partidos ya no se pueden editar. Cada partido se cierra 2 horas antes del inicio.</span></div>
         )}
 
         {/* GROUPS + THIRDS */}
@@ -744,7 +753,7 @@ function App() {
         <section className="section print-section" style={{ display: tab === "scores" ? "block" : "none" }}>
           <div className="section-head">
             <h2>Marcadores · Fase de Grupos</h2>
-            <p>Pronostica el <b>marcador</b> de los <b>72 partidos</b>. Acertar el resultado da puntos; el marcador exacto da más.</p>
+            <p>Pronostica el <b>marcador</b> de los <b>72 partidos</b>. Cada partido se bloquea <b>2 horas antes</b> de iniciar.</p>
             <div className="prog" style={{ marginTop: 10 }}>
               <span>{scoresDone}/72 partidos</span>
               <span className="bar"><span className="fill" style={{ width: (scoresDone / 72 * 100) + "%" }}></span></span>
@@ -807,7 +816,7 @@ function App() {
                 <li>En <b>Grupos</b>: marca 1.º, 2.º, 3.º y elige los 8 mejores terceros.</li>
                 <li>En <b>Marcadores</b>: pronostica los 72 partidos de la fase de grupos.</li>
                 <li>En <b>Camino al Título</b>: arma la eliminatoria hasta el campeón.</li>
-                <li>Al arrancar el Mundial (<b>11 jun</b>) se cierran los pronósticos y la <b>Tabla</b> empieza a sumar.</li>
+                <li>Cada marcador se cierra <b>2 horas antes</b> de iniciar su partido; la <b>Tabla</b> suma con resultados oficiales.</li>
               </ol>
             </div>
           </div>
