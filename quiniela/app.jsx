@@ -34,6 +34,10 @@ function slugify(s) {
 function titleFromSlug(s) {
   return String(s || "").replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
+function nameFromId(id) {
+  const known = { raul: "Raúl", lamh1: "LAMH1" };
+  return known[id] || titleFromSlug(id);
+}
 function getInitialGroup() {
   const params = new URLSearchParams(window.location.search);
   const fromUrl = slugify(params.get("grupo"));
@@ -122,7 +126,7 @@ function GroupGate({ onEnter }) {
     const name = newName.trim();
     const id = slugify(name);
     if (!id) return;
-    onEnter({ id, name });
+    onEnter({ id, name, isNew: true });
   }
   async function deleteKnownGroup(group) {
     const pin = prompt("PIN de administrador:");
@@ -247,6 +251,7 @@ function App() {
 
   useEffect(() => {
     if (!group || meta === null || meta.id) return;
+    if (!group.isNew) return;
     const isDefault = group.id === QM.DEFAULT_GROUP_ID;
     const next = {
       id: group.id,
@@ -260,8 +265,15 @@ function App() {
 
   const players = useMemo(() => {
     const list = meta && Array.isArray(meta.players) ? meta.players : [];
-    return list.filter((p) => p && p.id && p.name);
-  }, [meta]);
+    const clean = list.filter((p) => p && p.id && p.name);
+    if (clean.length) return clean;
+    const ids = Object.keys(all || {}).filter(Boolean).sort();
+    return ids.map((id, i) => ({
+      id,
+      name: nameFromId(id),
+      color: QM.PLAYER_COLORS[i % QM.PLAYER_COLORS.length] || "oklch(0.58 0.17 152)",
+    }));
+  }, [meta, all]);
 
   useEffect(() => {
     if (!players.length) { setPid(null); return; }
