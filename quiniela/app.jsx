@@ -486,18 +486,6 @@ function App() {
       alert("No se pudo eliminar el jugador: " + (e.message || e));
     }
   }
-  function changeGroup() {
-    clearRememberedGroup();
-    setGroup(null);
-    setMeta(null);
-    setAll({});
-    setOfficial({});
-    setConfig({});
-    setPid(null);
-    setIsAdmin(false);
-    setTab("scores");
-  }
-
   /* ---------- mutaciones de resultados oficiales (admin) ---------- */
   function updateOfficial(mut) {
     setOfficial((prev) => {
@@ -660,7 +648,6 @@ function App() {
             <span className="brand-badge">{groupName}</span>
             <span className="brand-sub">Grupo privado · Código {group.id}</span>
             <div className="mast-actions no-print">
-              <button className="mast-btn" title="Cambiar grupo" onClick={changeGroup}>Cambiar grupo</button>
               <button className="mast-btn" title="Borrar pronósticos" onClick={resetPlayer}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
