@@ -97,8 +97,9 @@
     });
   });
 
-  // Jugadores de la porra familiar (color de avatar por persona)
-  const PLAYERS = [
+  // Jugadores de la porra familiar original (se usa como grupo inicial "hogar").
+  // Los grupos nuevos crean su propia lista de jugadores desde la app.
+  const DEFAULT_PLAYERS = [
     { id: "abu",   name: "Abu George",  color: "oklch(0.63 0.20 25)" },
     { id: "juli",  name: "Julina",      color: "oklch(0.68 0.18 55)" },
     { id: "jorge", name: "Jorge",       color: "oklch(0.72 0.18 132)" },
@@ -109,6 +110,8 @@
     { id: "dani",  name: "Dani",        color: "oklch(0.53 0.20 298)" },
     { id: "este",  name: "Esteban",     color: "oklch(0.62 0.19 12)" },
   ];
+  const PLAYERS = DEFAULT_PLAYERS;
+  const PLAYER_COLORS = DEFAULT_PLAYERS.map((p) => p.color);
 
   // Valores de puntos (usados por el motor de puntuación y la tabla de reglas)
   const POINTS = {
@@ -164,5 +167,10 @@
   // Capacidades de cada ronda eliminatoria (cuántos equipos avanzan)
   const KO_CAPS = { r16: 16, qf: 8, sf: 4, fin: 2 };
 
-  window.QM = { T, GROUPS, MATCHES, PLAYERS, RULES, POINTS, KO_CAPS, META, CONFIG };
+  const DEFAULT_GROUP_ID = "hogar";
+
+  window.QM = {
+    T, GROUPS, MATCHES, PLAYERS, DEFAULT_PLAYERS, PLAYER_COLORS,
+    RULES, POINTS, KO_CAPS, META, CONFIG, DEFAULT_GROUP_ID,
+  };
 })();

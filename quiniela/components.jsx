@@ -46,26 +46,28 @@ function GroupCard({ group, value, onPick, locked }) {
 }
 
 /* -------------------------------------------------- MatchRow (compacto, para los 72) */
-function MatchRow({ match, value, onChange, locked }) {
+function MatchRow({ match, value, onChange, locked, isClosed }) {
   const v = value || {};
+  const closed = !!(locked || (isClosed && isClosed(match.id)));
   const h = v.h, a = v.a;
   const set = (k, val) => {
+    if (closed) return;
     if (val === "") return onChange(match.id, k, "");
     onChange(match.id, k, Math.max(0, Math.min(19, parseInt(val, 10) || 0)));
   };
   const has = QMScore.hasScore(v);
   const win = has ? (+h > +a ? "h" : +a > +h ? "a" : "d") : "";
   return (
-    <div className="fxrow">
+    <div className={"fxrow" + (closed ? " is-locked" : "")}>
       <span className={"fxteam home" + (win === "h" ? " w" : "") + (win === "d" ? " d" : "")}>
         <span className="fxname">{T[match.home].name}</span>
         <span className="fxflag">{T[match.home].flag}</span>
       </span>
       <span className="fxscore">
-        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={locked}
+        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
           value={h ?? ""} onChange={(e) => set("h", e.target.value)} aria-label={"Goles " + T[match.home].name} />
         <span className="fxdash">·</span>
-        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={locked}
+        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
           value={a ?? ""} onChange={(e) => set("a", e.target.value)} aria-label={"Goles " + T[match.away].name} />
       </span>
       <span className={"fxteam away" + (win === "a" ? " w" : "") + (win === "d" ? " d" : "")}>
@@ -77,7 +79,7 @@ function MatchRow({ match, value, onChange, locked }) {
 }
 
 /* -------------------------------------------------- GroupFixtures (tarjeta por grupo con sus 6 partidos) */
-function GroupFixtures({ group, matches, scores, onChange, locked }) {
+function GroupFixtures({ group, matches, scores, onChange, locked, isClosed }) {
   const filled = matches.filter((m) => QMScore.hasScore((scores || {})[m.id])).length;
   const byJor = [1, 2, 3].map((j) => ({ j, list: matches.filter((m) => m.jor === j) }));
   return (
@@ -91,7 +93,7 @@ function GroupFixtures({ group, matches, scores, onChange, locked }) {
         <div className="fxjor" key={j}>
           <div className="fxjlabel">Jornada {j}</div>
           {list.map((m) => (
-            <MatchRow key={m.id} match={m} value={(scores || {})[m.id]} onChange={onChange} locked={locked} />
+            <MatchRow key={m.id} match={m} value={(scores || {})[m.id]} onChange={onChange} locked={locked} isClosed={isClosed} />
           ))}
         </div>
       ))}

@@ -10,7 +10,7 @@ function Leaderboard({ standings, hasResults }) {
     return (
       <div className="lb-empty">
         <div className="big">La tabla se enciende con los resultados ⚽</div>
-        <div>Aún no hay resultados oficiales cargados. Cuando el <b>admin</b> empiece a capturar lo que pasa en el Mundial, aquí aparece el ranking en vivo de los 10, calculado solo según las reglas de puntos.</div>
+        <div>Aún no hay resultados oficiales cargados. Cuando el <b>admin</b> empiece a capturar lo que pasa en el Mundial, aquí aparece el ranking en vivo del grupo, calculado solo según las reglas de puntos.</div>
       </div>
     );
   }

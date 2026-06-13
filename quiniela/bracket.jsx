@@ -186,7 +186,7 @@ function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
 /* ────────────────────────────────────────────────────────────────
    BracketRound — columna de partidos para una ronda
    ──────────────────────────────────────────────────────────────── */
-function BracketRound({ title, sub, matches, round, locked, onScoreChange }) {
+function BracketRound({ title, sub, matches, round, locked, onScoreChange, isMatchClosed }) {
   return (
     <div className="br-round">
       <div className="br-round-head">
@@ -202,7 +202,7 @@ function BracketRound({ title, sub, matches, round, locked, onScoreChange }) {
               away={m.away}
               score={m.score}
               matchLabel={"P" + (i + 1)}
-              locked={locked}
+              locked={locked || !!(isMatchClosed && isMatchClosed(round, i))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange(round, i, k, val); }}
             />
           );
@@ -215,7 +215,7 @@ function BracketRound({ title, sub, matches, round, locked, onScoreChange }) {
 /* ────────────────────────────────────────────────────────────────
    BracketView — bracket completo con todas las rondas
    ──────────────────────────────────────────────────────────────── */
-function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) {
+function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, isMatchClosed }) {
   // Siempre mostrar 16 slots — rellenar con vacíos si el admin aún no configuró los cruces
   const rawPairs = r16Pairs || [];
   const fullPairs = Array.from({ length: 16 }, function(_, i) {
@@ -253,6 +253,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
           round="r16"
           locked={locked}
           onScoreChange={onScoreChange}
+          isMatchClosed={isMatchClosed}
         />
         <BracketRound
           title="Octavos"
@@ -261,6 +262,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
           round="qf"
           locked={locked}
           onScoreChange={onScoreChange}
+          isMatchClosed={isMatchClosed}
         />
         <BracketRound
           title="Cuartos"
@@ -269,6 +271,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
           round="sf"
           locked={locked}
           onScoreChange={onScoreChange}
+          isMatchClosed={isMatchClosed}
         />
         <BracketRound
           title="Semifinales"
@@ -277,6 +280,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
           round="semis"
           locked={locked}
           onScoreChange={onScoreChange}
+          isMatchClosed={isMatchClosed}
         />
 
         {/* Columna final: Final + 3er lugar + banner campeón */}
@@ -291,7 +295,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
               away={finMatch.away}
               score={finMatch.score}
               matchLabel="Final"
-              locked={locked}
+              locked={locked || !!(isMatchClosed && isMatchClosed('fin', 0))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('fin', 0, k, val); }}
             />
             <KOMatchCard
@@ -299,7 +303,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open }) 
               away={thirdMatch.away}
               score={thirdMatch.score}
               matchLabel="3.er lugar"
-              locked={locked}
+              locked={locked || !!(isMatchClosed && isMatchClosed('third', 0))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('third', 0, k, val); }}
             />
             {champ && (

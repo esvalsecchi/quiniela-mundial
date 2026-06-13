@@ -86,6 +86,10 @@
     if (Object.values(s).some((x) => hasScore(x))) return true;
     if ((pred.thirds || []).length) return true;
     if (k.champ || (k.fin || []).length || (k.qf || []).length || (k.r16 || []).length) return true;
+    if (pred.koScores && Object.values(pred.koScores).some((x) => {
+      if (Array.isArray(x)) return x.some((s) => hasScore(s));
+      return hasScore(x);
+    })) return true;
     return false;
   }
 
@@ -99,8 +103,9 @@
     return false;
   }
 
-  function standings(allPreds, official) {
-    const rows = QM.PLAYERS.map((pl) => ({
+  function standings(allPreds, official, players) {
+    const roster = Array.isArray(players) ? players : QM.PLAYERS;
+    const rows = roster.map((pl) => ({
       player: pl,
       score: scorePlayer(allPreds[pl.id], official),
       played: playerHasPredictions(allPreds[pl.id]),
