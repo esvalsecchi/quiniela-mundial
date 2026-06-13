@@ -124,9 +124,6 @@ function GroupGate({ onEnter }) {
     if (!id) return;
     onEnter({ id, name });
   }
-  function enterDefault() {
-    onEnter({ id: QM.DEFAULT_GROUP_ID, name: QM.META.brand });
-  }
   async function deleteKnownGroup(group) {
     const pin = prompt("PIN de administrador:");
     if (pin == null) return;
@@ -193,7 +190,6 @@ function GroupGate({ onEnter }) {
               <div className="known-empty">Todavía no hay grupos guardados. Crea uno y aparecerá aquí.</div>
             )}
           </div>
-          <button className="gate-link" onClick={enterDefault}>Entrar al grupo Hogar</button>
         </div>
       </main>
     </React.Fragment>
@@ -448,6 +444,36 @@ function App() {
     QMCloud.saveMeta(next);
     QMCloud.savePlayer(id, blankPred());
   }
+  function canDeletePlayer(player) {
+    if (!player) return false;
+    if (group && group.id === QM.DEFAULT_GROUP_ID) return !!player.createdAt;
+    return true;
+  }
+  async function deletePlayer(player) {
+    if (!isAdmin || !player || !canDeletePlayer(player)) return;
+    if (!confirm(`¿Eliminar a ${player.name} y todos sus pronósticos? Esta acción no se puede deshacer.`)) return;
+    const remaining = players.filter((p) => p.id !== player.id);
+    const next = {
+      ...(meta || {}),
+      id: group.id,
+      name: groupName,
+      players: remaining,
+      updatedAt: new Date().toISOString(),
+    };
+    setMeta(next);
+    setAll((prev) => {
+      const copy = { ...prev };
+      delete copy[player.id];
+      return copy;
+    });
+    if (pid === player.id) setPid(remaining[0] ? remaining[0].id : null);
+    try {
+      await QMCloud.saveMeta(next);
+      await QMCloud.deletePlayer(player.id);
+    } catch (e) {
+      alert("No se pudo eliminar el jugador: " + (e.message || e));
+    }
+  }
   function changeGroup() {
     clearRememberedGroup();
     setGroup(null);
@@ -647,16 +673,26 @@ function App() {
 
       <div className="playerbar no-print">
         <div className="wrap">
-          <span className="pb-label">Jugador</span>
-          <div className="players">
-            {players.map((pl) => (
-              <button key={pl.id} className={"chip" + (pl.id === pid ? " active" : "")} onClick={() => setPid(pl.id)}>
-                <span className="av" style={{ background: pl.color }}>{initials(pl.name)}</span>
-                {pl.name}
-                {playerHasChamp(pl.id) && <span className="done-dot" title="Campeón elegido"></span>}
-              </button>
-            ))}
+          <div className="pb-create-row">
+            <span className="pb-label">Crear jugador</span>
             <PlayerCreator onCreate={addPlayer} compact />
+          </div>
+          <div className="pb-player-row">
+            <span className="pb-label">Jugadores</span>
+            <div className="players">
+              {players.map((pl) => (
+                <span key={pl.id} className={"chip-wrap" + (pl.id === pid ? " active" : "")}>
+                  <button className={"chip" + (pl.id === pid ? " active" : "")} onClick={() => setPid(pl.id)}>
+                    <span className="av" style={{ background: pl.color }}>{initials(pl.name)}</span>
+                    {pl.name}
+                    {playerHasChamp(pl.id) && <span className="done-dot" title="Campeón elegido"></span>}
+                  </button>
+                  {isAdmin && canDeletePlayer(pl) && (
+                    <button className="chip-delete" title={"Eliminar " + pl.name} onClick={() => deletePlayer(pl)}>Eliminar</button>
+                  )}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

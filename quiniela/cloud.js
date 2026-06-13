@@ -156,6 +156,12 @@
     all[cleanId(id)] = data;
     lsSet(key(LS.players), all);
   }
+  function deletePlayer(id) {
+    if (mode === "cloud") return col.doc(docName("player", id)).delete();
+    const all = lsGet(key(LS.players), {});
+    delete all[cleanId(id)];
+    lsSet(key(LS.players), all);
+  }
   function saveOfficial(data) {
     if (mode === "cloud") return col.doc(docName("_official")).set(data);
     lsSet(key(LS.official), data);
@@ -246,7 +252,7 @@
 
   const QMCloud = {
     enabled: false, mode: "local", groupId,
-    init, setGroup, cleanId, subscribe, savePlayer, saveOfficial, saveConfig, saveMeta, listGroups, deleteGroup,
+    init, setGroup, cleanId, subscribe, savePlayer, deletePlayer, saveOfficial, saveConfig, saveMeta, listGroups, deleteGroup,
   };
   window.QMCloud = QMCloud;
 })();
