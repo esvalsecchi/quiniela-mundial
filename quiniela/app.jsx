@@ -177,13 +177,15 @@ function GroupGate({ onEnter }) {
                       </span>
                       <em>{g.playersCount || 0} jugadores</em>
                     </button>
-                    <button
-                      className="known-delete"
-                      disabled={deletingGroup === g.id}
-                      title={"Eliminar " + g.name}
-                      onClick={() => deleteKnownGroup(g)}>
-                      {deletingGroup === g.id ? "..." : "Eliminar"}
-                    </button>
+                    {g.id !== QM.DEFAULT_GROUP_ID && (
+                      <button
+                        className="known-delete"
+                        disabled={deletingGroup === g.id}
+                        title={"Eliminar " + g.name}
+                        onClick={() => deleteKnownGroup(g)}>
+                        {deletingGroup === g.id ? "..." : "Eliminar"}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

@@ -36,13 +36,21 @@
     groupId = cleanId(id);
     QMCloud.groupId = groupId;
   }
+  function isLegacyGroup(id) {
+    return cleanId(id || groupId) === ((window.QM && window.QM.DEFAULT_GROUP_ID) || "hogar");
+  }
   function key(base) {
+    if (isLegacyGroup()) return base;
     return base + "::" + groupId;
   }
   function prefix() {
     return "g_" + groupId + "__";
   }
   function docName(kind, id) {
+    if (isLegacyGroup()) {
+      if (kind === "player") return "player_" + cleanId(id);
+      return kind;
+    }
     if (kind === "player") return prefix() + "player_" + cleanId(id);
     return prefix() + kind;
   }
@@ -79,6 +87,30 @@
   function subscribe(cbs) {
     cbs = cbs || {};
     if (mode === "cloud") {
+      if (isLegacyGroup()) {
+        const unsubLegacy = col.onSnapshot((snap) => {
+          const players = {};
+          let official = null, config = null, meta = null;
+          snap.forEach((doc) => {
+            const id = doc.id;
+            if (id === "_official") official = doc.data();
+            else if (id === "_config") config = doc.data();
+            else if (id === "_meta") meta = doc.data();
+            else if (id.indexOf("player_") === 0) players[id.slice(7)] = doc.data();
+          });
+          cbs.onPlayers && cbs.onPlayers(players);
+          cbs.onOfficial && cbs.onOfficial(official || {});
+          cbs.onConfig && cbs.onConfig(config || {});
+          cbs.onMeta && cbs.onMeta(meta || {});
+        }, (err) => {
+          console.warn("onSnapshot legacy error, usando modo local:", err);
+          mode = "local";
+          QMCloud.enabled = false;
+          QMCloud.mode = mode;
+          deliverLocal(cbs);
+        });
+        return unsubLegacy;
+      }
       const pfx = prefix();
       const q = col
         .where(firebase.firestore.FieldPath.documentId(), ">=", pfx)
@@ -140,10 +172,25 @@
     if (mode === "cloud") {
       const snap = await col.get();
       const groups = [];
+      let legacyPlayers = 0;
+      let hasLegacy = false;
+      let legacyMeta = null;
       snap.forEach((doc) => {
         const group = groupFromMetaDoc(doc.id, doc.data());
         if (group) groups.push(group);
+        if (doc.id === "_meta") { legacyMeta = doc.data(); hasLegacy = true; }
+        else if (doc.id === "_official" || doc.id === "_config" || doc.id.indexOf("player_") === 0) hasLegacy = true;
+        if (doc.id.indexOf("player_") === 0) legacyPlayers++;
       });
+      if (hasLegacy && !groups.some((g) => g.id === ((window.QM && window.QM.DEFAULT_GROUP_ID) || "hogar"))) {
+        groups.push({
+          id: (window.QM && window.QM.DEFAULT_GROUP_ID) || "hogar",
+          name: (legacyMeta && legacyMeta.name) || (window.QM && window.QM.META && window.QM.META.brand) || "Grupo Hogar",
+          playersCount: legacyMeta && Array.isArray(legacyMeta.players) ? legacyMeta.players.length : legacyPlayers,
+          updatedAt: legacyMeta && (legacyMeta.updatedAt || legacyMeta.createdAt),
+          legacy: true,
+        });
+      }
       groups.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || a.name.localeCompare(b.name));
       return groups;
     }
@@ -166,6 +213,9 @@
   }
   async function deleteGroup(id) {
     const gid = cleanId(id);
+    if (isLegacyGroup(gid)) {
+      throw new Error("El grupo Hogar usa la data histórica de Firebase y no se elimina desde la app.");
+    }
     if (mode === "cloud") {
       const pfx = "g_" + gid + "__";
       const snap = await col
