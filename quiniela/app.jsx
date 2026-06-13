@@ -82,14 +82,26 @@ function toggleInSet(arr, code, cap) {
 }
 
 function GroupGate({ onEnter }) {
-  const [joinCode, setJoinCode] = useState("");
   const [newName, setNewName] = useState("");
   const [knownGroups, setKnownGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
+  const [deletingGroup, setDeletingGroup] = useState("");
 
+  async function loadGroups() {
+    setLoadingGroups(true);
+    try {
+      QMCloud.init();
+      const groups = await QMCloud.listGroups();
+      setKnownGroups(groups || []);
+    } catch (e) {
+      console.warn("No se pudieron cargar los grupos:", e);
+      setKnownGroups([]);
+    }
+    setLoadingGroups(false);
+  }
   useEffect(() => {
     let alive = true;
-    async function loadGroups() {
+    async function loadInitialGroups() {
       setLoadingGroups(true);
       try {
         QMCloud.init();
@@ -101,16 +113,10 @@ function GroupGate({ onEnter }) {
       }
       if (alive) setLoadingGroups(false);
     }
-    loadGroups();
+    loadInitialGroups();
     return () => { alive = false; };
   }, []);
 
-  function join(e) {
-    e.preventDefault();
-    const id = slugify(joinCode);
-    if (!id) return;
-    onEnter({ id, name: titleFromSlug(id) });
-  }
   function create(e) {
     e.preventDefault();
     const name = newName.trim();
@@ -120,6 +126,21 @@ function GroupGate({ onEnter }) {
   }
   function enterDefault() {
     onEnter({ id: QM.DEFAULT_GROUP_ID, name: QM.META.brand });
+  }
+  async function deleteKnownGroup(group) {
+    const pin = prompt("PIN de administrador:");
+    if (pin == null) return;
+    const real = (window.QM_FIREBASE && window.QM_FIREBASE.ADMIN_PIN) || "hogar2026";
+    if (pin !== real) { alert("PIN incorrecto."); return; }
+    if (!confirm(`¿Eliminar el grupo "${group.name}" y todos sus datos? Esta acción no se puede deshacer.`)) return;
+    setDeletingGroup(group.id);
+    try {
+      await QMCloud.deleteGroup(group.id);
+      await loadGroups();
+    } catch (e) {
+      alert("No se pudo eliminar el grupo: " + (e.message || e));
+    }
+    setDeletingGroup("");
   }
 
   return (
@@ -131,12 +152,6 @@ function GroupGate({ onEnter }) {
           <h1>Elige tu grupo</h1>
           <p>Cada familia o grupo tiene su propio enlace, jugadores, pronósticos, resultados y tabla.</p>
           <div className="gate-grid">
-            <form className="gate-panel" onSubmit={join}>
-              <h2>Entrar a un grupo</h2>
-              <label>Código del grupo</label>
-              <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="familia-a" />
-              <button className="btn solid" type="submit">Entrar</button>
-            </form>
             <form className="gate-panel" onSubmit={create}>
               <h2>Crear grupo</h2>
               <label>Nombre del grupo</label>
@@ -154,13 +169,22 @@ function GroupGate({ onEnter }) {
             ) : knownGroups.length ? (
               <div className="known-list">
                 {knownGroups.map((g) => (
-                  <button key={g.id} className="known-group" onClick={() => onEnter({ id: g.id, name: g.name })}>
-                    <span>
-                      <b>{g.name}</b>
-                      <small>Código {g.id}</small>
-                    </span>
-                    <em>{g.playersCount || 0} jugadores</em>
-                  </button>
+                  <div key={g.id} className="known-group">
+                    <button className="known-main" onClick={() => onEnter({ id: g.id, name: g.name })}>
+                      <span>
+                        <b>{g.name}</b>
+                        <small>Código {g.id}</small>
+                      </span>
+                      <em>{g.playersCount || 0} jugadores</em>
+                    </button>
+                    <button
+                      className="known-delete"
+                      disabled={deletingGroup === g.id}
+                      title={"Eliminar " + g.name}
+                      onClick={() => deleteKnownGroup(g)}>
+                      {deletingGroup === g.id ? "..." : "Eliminar"}
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : (

@@ -199,7 +199,7 @@ body {
 .gate-shell > p { margin: 0; max-width: 54ch; color: var(--ink-soft); }
 .gate-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 24px;
 }
@@ -280,23 +280,36 @@ body {
   border-radius: 12px;
   background: var(--paper-2);
   color: var(--ink);
-  padding: 10px 12px;
+  padding: 8px;
+  text-align: left;
+}
+.known-group:hover { border-color: var(--brand); background: oklch(0.98 0.02 152); }
+.known-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 2px 4px;
   text-align: left;
   cursor: pointer;
 }
-.known-group:hover { border-color: var(--brand); background: oklch(0.98 0.02 152); }
-.known-group b {
+.known-main b {
   display: block;
   font-family: var(--font-display);
   font-size: 14px;
 }
-.known-group small {
+.known-main small {
   display: block;
   color: var(--ink-faint);
   font-size: 12px;
   margin-top: 1px;
 }
-.known-group em {
+.known-main em {
   flex: 0 0 auto;
   font-style: normal;
   font-family: var(--font-display);
@@ -307,6 +320,20 @@ body {
   border-radius: 999px;
   padding: 5px 8px;
 }
+.known-delete {
+  flex: 0 0 auto;
+  border: 1.5px solid oklch(0.82 0.09 25);
+  background: white;
+  color: oklch(0.48 0.14 25);
+  border-radius: 9px;
+  padding: 7px 9px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.known-delete:hover:not(:disabled) { background: oklch(0.98 0.03 25); border-color: oklch(0.62 0.16 25); }
+.known-delete:disabled { opacity: .55; cursor: wait; }
 .known-empty {
   color: var(--ink-soft);
   background: var(--paper-2);

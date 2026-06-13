@@ -47,7 +47,7 @@
     return prefix() + kind;
   }
   function groupFromMetaDoc(id, data) {
-    const m = /^g_(.+)__meta$/.exec(id);
+    const m = /^g_(.+)___meta$/.exec(id) || /^g_(.+)__meta$/.exec(id);
     if (!m) return null;
     const gid = m[1];
     return {
@@ -164,6 +164,29 @@
     groups.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || a.name.localeCompare(b.name));
     return groups;
   }
+  async function deleteGroup(id) {
+    const gid = cleanId(id);
+    if (mode === "cloud") {
+      const pfx = "g_" + gid + "__";
+      const snap = await col
+        .where(firebase.firestore.FieldPath.documentId(), ">=", pfx)
+        .where(firebase.firestore.FieldPath.documentId(), "<=", pfx + "\uf8ff")
+        .get();
+      const batch = db.batch();
+      snap.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      return snap.size;
+    }
+
+    const suffix = "::" + gid;
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const storageKey = localStorage.key(i);
+      if (storageKey && storageKey.endsWith(suffix)) keys.push(storageKey);
+    }
+    keys.forEach((storageKey) => localStorage.removeItem(storageKey));
+    return keys.length;
+  }
   function deliverLocal(cbs) {
     cbs.onPlayers && cbs.onPlayers(lsGet(key(LS.players), {}));
     cbs.onOfficial && cbs.onOfficial(lsGet(key(LS.official), {}));
@@ -173,7 +196,7 @@
 
   const QMCloud = {
     enabled: false, mode: "local", groupId,
-    init, setGroup, cleanId, subscribe, savePlayer, saveOfficial, saveConfig, saveMeta, listGroups,
+    init, setGroup, cleanId, subscribe, savePlayer, saveOfficial, saveConfig, saveMeta, listGroups, deleteGroup,
   };
   window.QMCloud = QMCloud;
 })();
