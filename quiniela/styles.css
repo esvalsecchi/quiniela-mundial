@@ -102,9 +102,9 @@ body {
   background: oklch(1 0 0 / 0.86); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.playerbar .wrap { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+.playerbar .wrap { display: grid; grid-template-rows: auto auto; align-items: stretch; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
 .pb-create-row,
-.pb-player-row { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pb-player-row { display: flex; align-items: center; gap: 14px; min-width: 0; width: 100%; }
 .pb-label { font-family: var(--font-display); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-faint); white-space: nowrap; }
 .players { display: flex; gap: 7px; overflow-x: auto; padding: 3px 2px; scrollbar-width: thin; flex: 1; }
 .players::-webkit-scrollbar { height: 6px; }
@@ -162,13 +162,16 @@ body {
 .player-create input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px oklch(0.58 0.17 152 / 0.16); }
 .player-create.compact {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   background: oklch(0.98 0.02 152);
   border: 1.5px dashed var(--brand);
   border-radius: 999px;
   padding: 5px;
 }
 .player-create.compact input {
-  width: min(260px, 45vw);
+  flex: 1;
+  width: auto;
   min-width: 0;
   height: 30px;
   border: 0;
@@ -597,6 +600,12 @@ footer.foot { text-align: center; color: var(--ink-faint); font-size: 12.5px; pa
   .gate-grid { grid-template-columns: 1fr; }
   .mast-top { align-items: flex-start; flex-wrap: wrap; }
   .mast-actions { order: 4; margin-left: 0; width: 100%; overflow-x: auto; padding-bottom: 2px; }
+  .playerbar .wrap { grid-template-rows: auto auto; gap: 9px; padding-top: 12px; padding-bottom: 12px; }
+  .pb-create-row,
+  .pb-player-row { width: 100%; display: block; }
+  .player-create.compact { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; border-radius: 28px; }
+  .player-create.compact input { width: 100%; }
+  .players { width: 100%; max-width: 100%; flex: none; }
   .rules-grid { grid-template-columns: 1fr; }
   .mast-meta { font-size: 12px; }
   .pb-label { display: none; }
