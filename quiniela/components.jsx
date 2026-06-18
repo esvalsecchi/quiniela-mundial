@@ -46,10 +46,12 @@ function GroupCard({ group, value, onPick, locked }) {
 }
 
 /* -------------------------------------------------- MatchRow (compacto, para los 72) */
-function MatchRow({ match, value, onChange, locked, isClosed }) {
+function MatchRow({ match, value, officialValue, onChange, locked, isClosed }) {
   const v = value || {};
   const closed = !!(locked || (isClosed && isClosed(match.id)));
   const h = v.h, a = v.a;
+  const hasOfficial = QMScore.hasScore(officialValue);
+  const matchPoints = hasOfficial ? QMScore.scoreMatch(v, officialValue) : 0;
   const set = (k, val) => {
     if (closed) return;
     if (val === "") return onChange(match.id, k, "");
@@ -58,28 +60,37 @@ function MatchRow({ match, value, onChange, locked, isClosed }) {
   const has = QMScore.hasScore(v);
   const win = has ? (+h > +a ? "h" : +a > +h ? "a" : "d") : "";
   return (
-    <div className={"fxrow" + (closed ? " is-locked" : "")}>
-      <span className={"fxteam home" + (win === "h" ? " w" : "") + (win === "d" ? " d" : "")}>
-        <span className="fxname">{T[match.home].name}</span>
-        <span className="fxflag">{T[match.home].flag}</span>
-      </span>
-      <span className="fxscore">
-        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
-          value={h ?? ""} onChange={(e) => set("h", e.target.value)} aria-label={"Goles " + T[match.home].name} />
-        <span className="fxdash">·</span>
-        <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
-          value={a ?? ""} onChange={(e) => set("a", e.target.value)} aria-label={"Goles " + T[match.away].name} />
-      </span>
-      <span className={"fxteam away" + (win === "a" ? " w" : "") + (win === "d" ? " d" : "")}>
-        <span className="fxflag">{T[match.away].flag}</span>
-        <span className="fxname">{T[match.away].name}</span>
-      </span>
+    <div className={"fxmatch" + (closed ? " is-locked" : "")}>
+      <div className="fxrow">
+        <span className={"fxteam home" + (win === "h" ? " w" : "") + (win === "d" ? " d" : "")}>
+          <span className="fxname">{T[match.home].name}</span>
+          <span className="fxflag">{T[match.home].flag}</span>
+        </span>
+        <span className="fxscore">
+          <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
+            value={h ?? ""} onChange={(e) => set("h", e.target.value)} aria-label={"Goles " + T[match.home].name} />
+          <span className="fxdash">·</span>
+          <input className="fxnum" type="number" inputMode="numeric" min="0" max="19" disabled={closed}
+            value={a ?? ""} onChange={(e) => set("a", e.target.value)} aria-label={"Goles " + T[match.away].name} />
+        </span>
+        <span className={"fxteam away" + (win === "a" ? " w" : "") + (win === "d" ? " d" : "")}>
+          <span className="fxflag">{T[match.away].flag}</span>
+          <span className="fxname">{T[match.away].name}</span>
+        </span>
+      </div>
+      {hasOfficial && (
+        <div className="fxofficial">
+          <span className="fxofficial-label">Final real</span>
+          <span className="fxofficial-score">{officialValue.h} <span>·</span> {officialValue.a}</span>
+          {matchPoints > 0 && <span className="fxpoints">+{matchPoints} {matchPoints === 1 ? "punto" : "puntos"}</span>}
+        </div>
+      )}
     </div>
   );
 }
 
 /* -------------------------------------------------- GroupFixtures (tarjeta por grupo con sus 6 partidos) */
-function GroupFixtures({ group, matches, scores, onChange, locked, isClosed }) {
+function GroupFixtures({ group, matches, scores, officialScores, onChange, locked, isClosed }) {
   const filled = matches.filter((m) => QMScore.hasScore((scores || {})[m.id])).length;
   const byJor = [1, 2, 3].map((j) => ({ j, list: matches.filter((m) => m.jor === j) }));
   return (
@@ -93,7 +104,7 @@ function GroupFixtures({ group, matches, scores, onChange, locked, isClosed }) {
         <div className="fxjor" key={j}>
           <div className="fxjlabel">Jornada {j}</div>
           {list.map((m) => (
-            <MatchRow key={m.id} match={m} value={(scores || {})[m.id]} onChange={onChange} locked={locked} isClosed={isClosed} />
+            <MatchRow key={m.id} match={m} value={(scores || {})[m.id]} officialValue={(officialScores || {})[m.id]} onChange={onChange} locked={locked} isClosed={isClosed} />
           ))}
         </div>
       ))}

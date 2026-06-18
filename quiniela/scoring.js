@@ -16,6 +16,14 @@
   }
   const inter = (a, b) => (a || []).filter((x) => x && (b || []).includes(x));
 
+  function scoreMatch(predScore, officialScore) {
+    if (!hasScore(officialScore) || !hasScore(predScore)) return 0;
+    const oh = +officialScore.h, oa = +officialScore.a, ph = +predScore.h, pa = +predScore.a;
+    if (ph === oh && pa === oa) return P.exacto;
+    if (Math.sign(ph - pa) === Math.sign(oh - oa)) return P.resultado;
+    return 0;
+  }
+
   function scorePlayer(pred, official) {
     const R = { groupPos: 0, thirds: 0, scores: 0, octavos: 0, cuartos: 0, semis: 0, finals: 0, champ: 0, third: 0 };
     pred = pred || {}; official = official || {};
@@ -39,10 +47,7 @@
     // Marcadores (72)
     QM.MATCHES.forEach((m) => {
       const off = os[m.id], pv = ps[m.id];
-      if (!hasScore(off) || !hasScore(pv)) return;
-      const oh = +off.h, oa = +off.a, ph = +pv.h, pa = +pv.a;
-      if (ph === oh && pa === oa) R.scores += P.exacto;
-      else if (Math.sign(ph - pa) === Math.sign(oh - oa)) R.scores += P.resultado;
+      R.scores += scoreMatch(pv, off);
     });
 
     // Eliminatoria (conjuntos por ronda)
@@ -137,5 +142,5 @@
     return { first: sorted[0], second: sorted[1], third: sorted[2] };
   }
 
-  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore, calcGroupStandings };
+  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore, scoreMatch, calcGroupStandings };
 })();

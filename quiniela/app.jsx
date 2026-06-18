@@ -762,7 +762,7 @@ function App() {
           <div className="fx-grid">
             {QM.GROUPS.map((g) => (
               <GroupFixtures key={g.id} group={g} matches={QM.MATCHES.filter((m) => m.group === g.id)}
-                scores={pred.scores} onChange={setScore} locked={false} isClosed={matchClosed} />
+                scores={pred.scores} officialScores={official.scores || {}} onChange={setScore} locked={false} isClosed={matchClosed} />
             ))}
           </div>
         </section>
