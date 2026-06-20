@@ -131,7 +131,7 @@
     "F-0": { matchNo: 11, kickoffAt: "2026-06-14T20:00:00Z", lockAt: "2026-06-14T18:00:00Z" },
     "F-1": { matchNo: 12, kickoffAt: "2026-06-15T02:00:00Z", lockAt: "2026-06-15T00:00:00Z" },
     "F-2": { matchNo: 35, kickoffAt: "2026-06-20T17:00:00Z", lockAt: "2026-06-20T15:00:00Z" },
-    "F-3": { matchNo: 36, kickoffAt: "2026-06-20T04:00:00Z", lockAt: "2026-06-20T02:00:00Z" },
+    "F-3": { matchNo: 36, kickoffAt: "2026-06-21T04:00:00Z", lockAt: "2026-06-21T02:00:00Z" },
     "F-4": { matchNo: 58, kickoffAt: "2026-06-25T23:00:00Z", lockAt: "2026-06-25T21:00:00Z" },
     "F-5": { matchNo: 57, kickoffAt: "2026-06-25T23:00:00Z", lockAt: "2026-06-25T21:00:00Z" },
     "G-0": { matchNo: 16, kickoffAt: "2026-06-15T19:00:00Z", lockAt: "2026-06-15T17:00:00Z" },
