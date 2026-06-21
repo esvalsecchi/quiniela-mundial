@@ -3,7 +3,7 @@ const { useState, useEffect, useMemo, useRef } = React;
 const QM = window.QM;
 const ALL_CODES = Object.keys(QM.T);
 const CAPS = QM.KO_CAPS;
-const AUTO_SYNC_MS = 2 * 60 * 60 * 1000;
+const AUTO_SYNC_MS = 20 * 60 * 1000;
 
 function initials(name) {
   const p = name.trim().split(/\s+/);
