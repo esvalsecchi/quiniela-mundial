@@ -84,6 +84,91 @@ function toggleInSet(arr, code, cap) {
   if (arr.length >= cap) return arr;
   return [...arr, code];
 }
+function sameScore(a, b) {
+  return QMScore.hasScore(a) && QMScore.hasScore(b) && +a.h === +b.h && +a.a === +b.a;
+}
+function sameJSON(a, b) {
+  return JSON.stringify(a || null) === JSON.stringify(b || null);
+}
+function countKOScores(koScores) {
+  koScores = koScores || {};
+  return ["r16", "qf", "sf", "semis"].reduce((sum, round) => (
+    sum + ((koScores[round] || []).filter((s) => QMScore.hasScore(s)).length)
+  ), 0) + (QMScore.hasScore(koScores.fin) ? 1 : 0) + (QMScore.hasScore(koScores.third) ? 1 : 0);
+}
+function applyTournamentState(cur, state) {
+  cur = cur || {};
+  state = state || {};
+  let changed = 0;
+
+  cur.scores = cur.scores || {};
+  Object.entries(state.scores || {}).forEach(([mid, score]) => {
+    if (sameScore(cur.scores[mid], score)) return;
+    cur.scores[mid] = score;
+    changed++;
+  });
+
+  if (state.groups && Object.keys(state.groups).length) {
+    cur.groups = cur.groups || {};
+    Object.entries(state.groups).forEach(([gid, group]) => {
+      if (sameJSON(cur.groups[gid], group)) return;
+      cur.groups[gid] = group;
+      changed++;
+    });
+  } else {
+    QM.GROUPS.forEach((g) => {
+      const standings = QMScore.calcGroupStandings(g.id, cur.scores);
+      if (!standings || sameJSON((cur.groups || {})[g.id], standings)) return;
+      cur.groups = cur.groups || {};
+      cur.groups[g.id] = standings;
+      changed++;
+    });
+  }
+
+  if (Array.isArray(state.thirds) && state.thirds.length && !sameJSON(cur.thirds || [], state.thirds)) {
+    cur.thirds = state.thirds.slice(0, 8);
+    changed++;
+  }
+
+  const r16Pairs = state.bracketPairs && state.bracketPairs.r16;
+  if (Array.isArray(r16Pairs) && r16Pairs.length) {
+    if (!sameJSON((cur.bracketPairs || {}).r16, r16Pairs)) changed++;
+    cur.bracketPairs = { ...(cur.bracketPairs || {}), r16: r16Pairs };
+  }
+
+  const incomingKO = state.koScores || {};
+  const rounds = ["r16", "qf", "sf", "semis"];
+  cur.koScores = cur.koScores || {};
+  rounds.forEach((round) => {
+    if (!Array.isArray(incomingKO[round]) || !incomingKO[round].length) return;
+    if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
+    incomingKO[round].forEach((score, idx) => {
+      if (!QMScore.hasScore(score) || sameScore(cur.koScores[round][idx], score)) return;
+      cur.koScores[round][idx] = score;
+      changed++;
+    });
+  });
+  ["fin", "third"].forEach((round) => {
+    if (!QMScore.hasScore(incomingKO[round]) || sameScore(cur.koScores[round], incomingKO[round])) return;
+    cur.koScores[round] = incomingKO[round];
+    changed++;
+  });
+
+  const pairs = (cur.bracketPairs || {}).r16 || [];
+  if (window.buildBracket && pairs.length > 0 && cur.koScores) {
+    const bracket = window.buildBracket(pairs, cur.koScores);
+    if (bracket) {
+      const derived = window.deriveKO(bracket);
+      if (!sameJSON(cur.ko, derived)) {
+        cur.ko = derived;
+        changed++;
+      }
+    }
+  }
+
+  normalize(cur);
+  return changed;
+}
 
 function GroupGate({ onEnter }) {
   const [newName, setNewName] = useState("");
@@ -540,6 +625,14 @@ function App() {
       });
     });
   }
+  function syncOfficialTournament(state) {
+    setOfficial((prev) => {
+      const cur = JSON.parse(JSON.stringify(withDefaults(prev)));
+      applyTournamentState(cur, state);
+      QMCloud.saveOfficial(cur);
+      return cur;
+    });
+  }
   async function autoSyncOfficialScores() {
     if (!group || meta === null || !window.QMAPI || autoSyncingRef.current) return;
     const last = config && config.lastAutoSyncAt ? Date.parse(config.lastAutoSyncAt) : 0;
@@ -548,25 +641,13 @@ function App() {
     autoSyncingRef.current = true;
     const syncedAt = new Date().toISOString();
     try {
-      const fixtures = await window.QMAPI.fetchGroupFixtures();
-      const scores = window.QMAPI.parseScores(fixtures);
-      let changed = 0;
+      const state = window.QMAPI.fetchTournamentState
+        ? await window.QMAPI.fetchTournamentState()
+        : { source: "api", scores: window.QMAPI.parseScores(await window.QMAPI.fetchGroupFixtures()) };
       const cur = JSON.parse(JSON.stringify(withDefaults(official)));
-
-      Object.entries(scores).forEach(([mid, score]) => {
-        const prev = (cur.scores || {})[mid] || {};
-        if (+prev.h === +score.h && +prev.a === +score.a) return;
-        cur.scores[mid] = score;
-        changed++;
-        const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
-        if (groupId) {
-          const standings = QMScore.calcGroupStandings(groupId, cur.scores);
-          if (standings) { cur.groups = cur.groups || {}; cur.groups[groupId] = standings; }
-        }
-      });
+      const changed = applyTournamentState(cur, state);
 
       if (changed) {
-        normalize(cur);
         setOfficial(cur);
         QMCloud.saveOfficial(cur);
       }
@@ -574,8 +655,10 @@ function App() {
       const nextConfig = {
         ...config,
         lastAutoSyncAt: syncedAt,
-        lastAutoSyncSource: fixtures.source || "api",
-        lastAutoSyncMatches: Object.keys(scores).length,
+        lastAutoSyncSource: state.source || "api",
+        lastAutoSyncMatches: Object.keys(state.scores || {}).length,
+        lastAutoSyncR16Pairs: (((state.bracketPairs || {}).r16 || []).filter((p) => p && p.home && p.away)).length,
+        lastAutoSyncKoScores: countKOScores(state.koScores),
         lastAutoSyncChanged: changed,
         lastAutoSyncError: null,
       };
@@ -831,6 +914,7 @@ function App() {
                 lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
                 phase2Open={phase2Open} onSetPhase2={setPhase2}
                 onSyncScores={syncOfficialScores}
+                onSyncTournament={syncOfficialTournament}
                 onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }}
                 bracketPairs={(official.bracketPairs || {}).r16 || []}
                 onSetBracketPairs={(pairs) => {

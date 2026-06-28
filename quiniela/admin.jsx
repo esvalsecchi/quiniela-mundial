@@ -95,16 +95,42 @@ function BracketPairsSetup({ bracketPairs, onSetBracketPairs }) {
 function AdminPanel(props) {
   const { official, pickGroup, toggleThird, setScore, koToggle, koSingle, offPool,
           lockMode, lockedNow, onSetLock, phase2Open, onSetPhase2, onSyncScores, onClear, onExit,
-          bracketPairs, onSetBracketPairs, officialKoScores, onSetBracketScoreOff } = props;
+          bracketPairs, onSetBracketPairs, officialKoScores, onSetBracketScoreOff, onSyncTournament } = props;
   const { useState } = React;
   const [sub, setSub] = useState("scores");
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
 
+  function countSyncedKOScores(koScores) {
+    koScores = koScores || {};
+    const arrCount = ["r16", "qf", "sf", "semis"].reduce(function(sum, round) {
+      return sum + ((koScores[round] || []).filter(function(s) {
+        return s && s.h !== undefined && s.h !== "" && s.h !== null && s.a !== undefined && s.a !== "" && s.a !== null;
+      }).length);
+    }, 0);
+    const singleCount = ["fin", "third"].filter(function(round) {
+      const s = koScores[round];
+      return s && s.h !== undefined && s.h !== "" && s.h !== null && s.a !== undefined && s.a !== "" && s.a !== null;
+    }).length;
+    return arrCount + singleCount;
+  }
+
   async function syncFromAPI() {
     if (!window.QMAPI || !onSyncScores) return;
     setSyncing(true); setSyncMsg("");
     try {
+      if (window.QMAPI.fetchTournamentState && onSyncTournament) {
+        const state = await window.QMAPI.fetchTournamentState();
+        const scores = state.scores || {};
+        const r16Count = (((state.bracketPairs || {}).r16 || []).filter((p) => p && p.home && p.away)).length;
+        const koCount = countSyncedKOScores(state.koScores);
+        const count = Object.keys(scores).length;
+        onSyncTournament(state);
+        setSyncMsg("✅ " + count + " marcadores · Dieciseisavos " + r16Count + "/16" + (koCount ? " · KO " + koCount : ""));
+        setSyncing(false);
+        return;
+      }
+
       const fixtures = await window.QMAPI.fetchGroupFixtures();
       const scores = window.QMAPI.parseScores(fixtures);
       const count = Object.keys(scores).length;
