@@ -167,7 +167,7 @@ function AdminPanel(props) {
 
       <div className={"lockbar" + (lockedNow ? "" : " live")}>
         <b>Pronósticos Fase de Grupos:</b>
-        <span>{lockedNow ? "🔒 Cerrados por admin" : "🟢 Abiertos para partidos pendientes (cierre 2h antes)"}</span>
+        <span>{lockedNow ? "🔒 Cerrados por admin" : "🟢 Abiertos para partidos pendientes (cierre al iniciar)"}</span>
         <span style={{ marginLeft: "auto", display: "inline-flex", gap: 6 }}>
           {lockOpts.map((o) => (
             <button key={String(o.v)} className={"btn" + (lockMode === o.v ? " solid" : "")} onClick={() => onSetLock(o.v)}>{o.label}</button>

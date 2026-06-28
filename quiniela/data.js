@@ -96,7 +96,7 @@
       MATCHES.push({ id: g.id + "-" + i, group: g.id, jor: m.jor, home: m.home, away: m.away });
     });
   });
-  // Horarios oficiales FIFA convertidos a UTC. lockAt cierra el pronóstico 2 horas antes del inicio.
+  // Horarios oficiales FIFA convertidos a UTC. El pronóstico cierra al inicio del partido.
   const MATCH_SCHEDULE = {
     "A-0": { matchNo: 1, kickoffAt: "2026-06-11T19:00:00Z", lockAt: "2026-06-11T17:00:00Z" },
     "A-1": { matchNo: 2, kickoffAt: "2026-06-12T02:00:00Z", lockAt: "2026-06-12T00:00:00Z" },
@@ -227,6 +227,50 @@
     ]},
   ];
 
+  // Horarios de eliminatoria convertidos a UTC, ordenados igual que las tarjetas del bracket.
+  const KO_SCHEDULE = {
+    r16: [
+      { matchNo: 73, kickoffAt: "2026-06-28T19:00:00Z" },
+      { matchNo: 74, kickoffAt: "2026-06-29T17:00:00Z" },
+      { matchNo: 75, kickoffAt: "2026-06-29T20:30:00Z" },
+      { matchNo: 76, kickoffAt: "2026-06-30T01:00:00Z" },
+      { matchNo: 77, kickoffAt: "2026-06-30T17:00:00Z" },
+      { matchNo: 78, kickoffAt: "2026-06-30T21:00:00Z" },
+      { matchNo: 79, kickoffAt: "2026-07-01T01:00:00Z" },
+      { matchNo: 80, kickoffAt: "2026-07-01T16:00:00Z" },
+      { matchNo: 81, kickoffAt: "2026-07-01T20:00:00Z" },
+      { matchNo: 82, kickoffAt: "2026-07-02T00:00:00Z" },
+      { matchNo: 83, kickoffAt: "2026-07-02T19:00:00Z" },
+      { matchNo: 84, kickoffAt: "2026-07-02T23:00:00Z" },
+      { matchNo: 85, kickoffAt: "2026-07-03T03:00:00Z" },
+      { matchNo: 86, kickoffAt: "2026-07-03T18:00:00Z" },
+      { matchNo: 87, kickoffAt: "2026-07-03T22:00:00Z" },
+      { matchNo: 88, kickoffAt: "2026-07-04T01:30:00Z" },
+    ],
+    qf: [
+      { matchNo: 89, kickoffAt: "2026-07-04T17:00:00Z" },
+      { matchNo: 90, kickoffAt: "2026-07-04T21:00:00Z" },
+      { matchNo: 91, kickoffAt: "2026-07-05T20:00:00Z" },
+      { matchNo: 92, kickoffAt: "2026-07-06T00:00:00Z" },
+      { matchNo: 93, kickoffAt: "2026-07-06T19:00:00Z" },
+      { matchNo: 94, kickoffAt: "2026-07-07T00:00:00Z" },
+      { matchNo: 95, kickoffAt: "2026-07-07T16:00:00Z" },
+      { matchNo: 96, kickoffAt: "2026-07-07T20:00:00Z" },
+    ],
+    sf: [
+      { matchNo: 97, kickoffAt: "2026-07-09T20:00:00Z" },
+      { matchNo: 98, kickoffAt: "2026-07-10T19:00:00Z" },
+      { matchNo: 99, kickoffAt: "2026-07-11T21:00:00Z" },
+      { matchNo: 100, kickoffAt: "2026-07-12T01:00:00Z" },
+    ],
+    semis: [
+      { matchNo: 101, kickoffAt: "2026-07-14T19:00:00Z" },
+      { matchNo: 102, kickoffAt: "2026-07-15T19:00:00Z" },
+    ],
+    third: { matchNo: 103, kickoffAt: "2026-07-18T21:00:00Z" },
+    fin: { matchNo: 104, kickoffAt: "2026-07-19T19:00:00Z" },
+  };
+
   // Configuración por defecto (se puede sobreescribir desde la nube)
   const CONFIG = {
     lockAt: "2026-06-11T19:00:00Z",  // arranque del Mundial (inauguración)
@@ -247,6 +291,6 @@
 
   window.QM = {
     T, GROUPS, MATCHES, PLAYERS, DEFAULT_PLAYERS, PLAYER_COLORS,
-    RULES, POINTS, KO_CAPS, META, CONFIG, DEFAULT_GROUP_ID,
+    RULES, POINTS, KO_CAPS, KO_SCHEDULE, META, CONFIG, DEFAULT_GROUP_ID,
   };
 })();

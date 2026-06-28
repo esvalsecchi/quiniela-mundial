@@ -144,7 +144,7 @@ function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
   const awayClass = "ko-mc-row away" + (decided ? (winner === away ? " ko-w" : " ko-l") : "");
 
   return (
-    <div className={"ko-mc" + (decided ? " ko-decided" : "")}>
+    <div className={"ko-mc" + (decided ? " ko-decided" : "") + (locked ? " is-locked" : "")}>
       {matchLabel && <span className="ko-mc-label">{matchLabel}</span>}
       <div className={homeClass}>
         <span className="ko-mc-flag">{homeT ? homeT.flag : "?"}</span>
