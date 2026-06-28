@@ -3,7 +3,8 @@
    {
      groups: { A: {first, second, third}, ... },
      thirds: [codes...],            // los 8 "mejores terceros" elegidos
-     scores: { "A-0": {h,a}, ... },  // 72 partidos
+     scores: { "A-0": {h,a}, ... },  // 72 partidos de grupos
+     koScores: { r16: [{h,a}], qf: [{h,a}], sf: [{h,a}], semis: [{h,a}], fin: {h,a}, third: {h,a} },
      ko: { r16:[], qf:[], sf:[], fin:[], champ:null, third:null }
    }
 */
@@ -22,6 +23,32 @@
     if (ph === oh && pa === oa) return P.exacto;
     if (Math.sign(ph - pa) === Math.sign(oh - oa)) return P.resultado;
     return 0;
+  }
+
+  function sameTeams(a, b) {
+    return a && b && a.home && a.away && a.home === b.home && a.away === b.away;
+  }
+
+  function scoreKOMatch(predMatch, officialMatch) {
+    if (!sameTeams(predMatch, officialMatch)) return 0;
+    return scoreMatch(predMatch.score, officialMatch.score);
+  }
+
+  function scoreKOBracket(pred, official) {
+    if (!window.buildBracket || !official.bracketPairs || !(official.bracketPairs.r16 || []).length || !official.koScores) return 0;
+    const playerBracket = window.buildBracket(official.bracketPairs.r16, pred.koScores || {});
+    const officialBracket = window.buildBracket(official.bracketPairs.r16, official.koScores || {});
+    if (!playerBracket || !officialBracket) return 0;
+
+    let points = 0;
+    ["r16", "qf", "sf", "semis"].forEach((round) => {
+      (officialBracket[round] || []).forEach((officialMatch, idx) => {
+        points += scoreKOMatch((playerBracket[round] || [])[idx], officialMatch);
+      });
+    });
+    points += scoreKOMatch(playerBracket.fin, officialBracket.fin);
+    points += scoreKOMatch(playerBracket.third, officialBracket.third);
+    return points;
   }
 
   function scorePlayer(pred, official) {
@@ -50,37 +77,13 @@
       R.scores += scoreMatch(pv, off);
     });
 
-    // Eliminatoria (conjuntos por ronda)
-    inter(pk.r16, ok.r16).forEach(() => { R.octavos += P.octavos; });
-    inter(pk.qf, ok.qf).forEach(() => { R.cuartos += P.cuartos; });
-    inter(pk.sf, ok.sf).forEach(() => { R.semis += P.semis; });
-    inter(pk.fin, ok.fin).forEach(() => { R.finals += P.final; });
-    if (pk.champ && ok.champ && pk.champ === ok.champ) R.champ += P.campeon;
-    if (pk.third && ok.third && pk.third === ok.third) R.third += P.tercer;
+    // Eliminatoria — cada partido de la llave predictiva puntúa por resultado/marcador.
+    R.koScores = scoreKOBracket(pred, official);
 
-    // Fase 2 — eliminatoria post-grupos (bracket por marcadores)
-    let pk2 = pred.ko2 || {};
-    let ok2 = ok; // por defecto usa mismo ok oficial
-    // Si hay bracket de marcadores, derivar ko desde el bracket
-    if (pred.koScores && official.bracketPairs && (official.bracketPairs.r16 || []).length > 0) {
-      const playerBracket = window.buildBracket && window.buildBracket(official.bracketPairs.r16, pred.koScores);
-      if (playerBracket) pk2 = window.deriveKO(playerBracket);
-    }
-    if (official.koScores && official.bracketPairs && (official.bracketPairs.r16 || []).length > 0) {
-      const offBracket = window.buildBracket && window.buildBracket(official.bracketPairs.r16, official.koScores);
-      if (offBracket) ok2 = window.deriveKO(offBracket);
-    }
-    inter(pk2.r16, ok2.r16).forEach(() => { R.octavos += P.octavos; });
-    inter(pk2.qf, ok2.qf).forEach(() => { R.cuartos += P.cuartos; });
-    inter(pk2.sf, ok2.sf).forEach(() => { R.semis += P.semis; });
-    inter(pk2.fin, ok2.fin).forEach(() => { R.finals += P.final; });
-    if (pk2.champ && ok2.champ && pk2.champ === ok2.champ) R.champ += P.campeon;
-    if (pk2.third && ok2.third && pk2.third === ok2.third) R.third += P.tercer;
-
-    R.total = R.groupPos + R.thirds + R.scores + R.octavos + R.cuartos + R.semis + R.finals + R.champ + R.third;
+    R.total = R.groupPos + R.thirds + R.scores + R.koScores;
     // agregados para la tabla
     R.grupos = R.groupPos + R.thirds;
-    R.elim = R.octavos + R.cuartos + R.semis + R.finals;
+    R.elim = R.koScores;
     return R;
   }
 

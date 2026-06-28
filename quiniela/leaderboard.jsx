@@ -41,8 +41,6 @@ function Leaderboard({ standings, hasResults }) {
                   <span>Grupos <b>{s.grupos}</b></span>
                   <span>Marcadores <b>{s.scores}</b></span>
                   <span>Eliminatoria <b>{s.elim}</b></span>
-                  <span>Campeón <b>{s.champ}</b></span>
-                  {s.third ? <span>3.º <b>{s.third}</b></span> : null}
                   {!r.played ? <span>· sin pronósticos</span> : null}
                 </div>
               </div>

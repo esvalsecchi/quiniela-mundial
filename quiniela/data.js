@@ -218,12 +218,9 @@
       { pts: "+3", label: "Marcador exacto (en vez del +1)" },
     ]},
     { section: "Eliminatoria", items: [
-      { pts: "+2", label: "Cada equipo en Octavos de Final" },
-      { pts: "+3", label: "Cada equipo en Cuartos de Final" },
-      { pts: "+5", label: "Cada semifinalista" },
-      { pts: "+8", label: "Cada finalista" },
-      { pts: "+12", label: "Campeón del Mundo" },
-      { pts: "+4", label: "Tercer lugar" },
+      { pts: "+1", label: "Resultado correcto de cada partido" },
+      { pts: "+3", label: "Marcador exacto de cada partido (en vez del +1)" },
+      { pts: "—", label: "En rondas futuras, puntúa solo si el cruce predicho coincide con el cruce real" },
     ]},
   ];
 
