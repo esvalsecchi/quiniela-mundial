@@ -152,4 +152,112 @@ function ThirdsSelector({ groups, selected, onToggle, locked, cap = 8 }) {
   );
 }
 
-Object.assign(window, { GroupCard, MatchRow, GroupFixtures, ThirdsSelector });
+/* -------------------------------------------------- GroupPhasePoints (puntos por jugador en grupos) */
+function GroupPhasePoints({ players, allPreds, official, hasResults }) {
+  const rows = (players || []).map((player) => {
+    const score = QMScore.scorePlayer((allPreds || {})[player.id], official || {});
+    return {
+      player,
+      score,
+      played: QMScore.playerHasPredictions((allPreds || {})[player.id]),
+    };
+  }).sort((a, b) => (
+    b.score.grupos - a.score.grupos ||
+    b.score.groupPos - a.score.groupPos ||
+    b.score.thirds - a.score.thirds ||
+    a.player.name.localeCompare(b.player.name)
+  ));
+
+  return (
+    <div className="phase-panel phase-points">
+      <div className="phase-panel-head">
+        <div>
+          <div className="phase-title">Puntos obtenidos</div>
+          <div className="phase-sub">Solo Fase de Grupos: posiciones y mejores terceros.</div>
+        </div>
+      </div>
+      {!hasResults && (
+        <div className="phase-empty">Aún no hay resultados oficiales cargados; los puntos aparecerán aquí automáticamente.</div>
+      )}
+      <div className="phase-points-list">
+        {rows.map((row) => (
+          <div className={"phase-player" + (row.played ? "" : " muted")} key={row.player.id}>
+            <div className="phase-player-main">
+              <span className="phase-av" style={{ background: row.player.color }}>{row.player.name.trim().slice(0, 2).toUpperCase()}</span>
+              <span className="phase-name">{row.player.name}</span>
+            </div>
+            <div className="phase-breakdown">
+              <span>Posiciones <b>{row.score.groupPos}</b></span>
+              <span>Mejores 3.º <b>{row.score.thirds}</b></span>
+            </div>
+            <div className="phase-total"><b>{row.score.grupos}</b><span>pts</span></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------- OfficialGroupResults (posiciones finales por grupo) */
+function OfficialGroupResults({ official }) {
+  const officialGroups = (official && official.groups) || {};
+  const bestThirds = (official && official.thirds) || [];
+  const completed = window.QM.GROUPS.filter((g) => {
+    const r = officialGroups[g.id] || {};
+    return r.first && r.second && r.third;
+  }).length;
+
+  function orderedTeams(group) {
+    const result = officialGroups[group.id] || {};
+    const known = [result.first, result.second, result.third].filter(Boolean);
+    const rest = group.teams.filter((code) => !known.includes(code));
+    return [result.first, result.second, result.third, rest[0]].filter(Boolean);
+  }
+
+  return (
+    <div className="phase-panel official-groups">
+      <div className="phase-panel-head">
+        <div>
+          <div className="phase-title">Resultados finales por grupo</div>
+          <div className="phase-sub">{completed}/12 grupos con posiciones oficiales.</div>
+        </div>
+      </div>
+      {completed === 0 ? (
+        <div className="phase-empty">Cuando el admin cargue los resultados oficiales, aquí se verá cómo terminó cada grupo.</div>
+      ) : (
+        <div className="official-grid">
+          {window.QM.GROUPS.map((group) => {
+            const result = officialGroups[group.id] || {};
+            const order = orderedTeams(group);
+            const complete = !!(result.first && result.second && result.third);
+            return (
+              <div className={"official-card" + (complete ? "" : " pending")} key={group.id} style={{ "--gc": group.color }}>
+                <div className="official-head">
+                  <span className="official-letter">{group.id}</span>
+                  <span>Grupo {group.id}</span>
+                </div>
+                {complete ? (
+                  <div className="official-teams">
+                    {order.map((code, idx) => (
+                      <div className="official-team" key={code}>
+                        <span className="official-pos">{idx + 1}º</span>
+                        <span className="official-flag">{T[code].flag}</span>
+                        <span className="official-name">{T[code].name}</span>
+                        {idx < 2 && <span className="official-tag direct">Clasifica</span>}
+                        {idx === 2 && bestThirds.includes(code) && <span className="official-tag third">Mejor 3.º</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="official-pending">Pendiente</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+Object.assign(window, { GroupCard, MatchRow, GroupFixtures, ThirdsSelector, GroupPhasePoints, OfficialGroupResults });

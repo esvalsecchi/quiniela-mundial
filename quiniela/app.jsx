@@ -826,6 +826,10 @@ function App() {
               <span className="bar"><span className="fill" style={{ width: (groupsDone / 12 * 100) + "%" }}></span></span>
             </div>
           </div>
+          <div className="phase-summary">
+            <GroupPhasePoints players={players} allPreds={all} official={official} hasResults={hasResults} />
+            <OfficialGroupResults official={official} />
+          </div>
           <div className="group-grid">
             {QM.GROUPS.map((g) => (<GroupCard key={g.id} group={g} value={pred.groups[g.id]} onPick={pickGroup} locked={groupClosed(g.id)} />))}
           </div>
