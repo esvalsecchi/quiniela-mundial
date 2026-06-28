@@ -871,6 +871,7 @@ function App() {
             <BracketView
               r16Pairs={(official.bracketPairs || {}).r16 || []}
               koScores={pred.koScores || {}}
+              officialKoScores={official.koScores || {}}
               onScoreChange={phase2Open ? setBracketScore : null}
               locked={!phase2Open}
               phase2Open={phase2Open}

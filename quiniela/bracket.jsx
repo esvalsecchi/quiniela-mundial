@@ -120,18 +120,58 @@ function deriveKO(bracket) {
   };
 }
 
+function getKOSchedule(round, matchIdx) {
+  const schedule = (window.QM && window.QM.KO_SCHEDULE) || {};
+  if (round === "fin" || round === "third") return schedule[round] || null;
+  return Array.isArray(schedule[round]) ? schedule[round][matchIdx] || null : null;
+}
+
+function formatKOKickoff(schedule) {
+  if (!schedule || !schedule.kickoffAt) return "";
+  const d = new Date(schedule.kickoffAt);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+}
+
+function sameKOTeams(predMatch, officialMatch) {
+  return !!(predMatch && officialMatch && predMatch.home && predMatch.away &&
+    predMatch.home === officialMatch.home && predMatch.away === officialMatch.away);
+}
+
+function scoreKOMatchCard(predMatch, officialMatch) {
+  if (!sameKOTeams(predMatch, officialMatch)) return 0;
+  return QMScore.scoreMatch(predMatch.score, officialMatch.score);
+}
+
 /* ────────────────────────────────────────────────────────────────
    KOMatchCard — muestra un partido del bracket con inputs
    ──────────────────────────────────────────────────────────────── */
-function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
+function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, locked, onChange }) {
+  const predMatch = { home: home, away: away, score: score || null };
   const winner = getKOWinner(home, away, score);
   const homeT = home ? KT2[home] : null;
   const awayT = away ? KT2[away] : null;
   const decided = !!(winner);
+  const kickoffLabel = formatKOKickoff(schedule);
+  const hasOfficial = officialMatch && QMScore.hasScore(officialMatch.score);
+  const officialTeamsMatch = hasOfficial && sameKOTeams(predMatch, officialMatch);
+  const officialHomeT = hasOfficial && officialMatch.home ? KT2[officialMatch.home] : null;
+  const officialAwayT = hasOfficial && officialMatch.away ? KT2[officialMatch.away] : null;
+  const matchPoints = officialTeamsMatch ? scoreKOMatchCard(predMatch, officialMatch) : 0;
 
   if (!home && !away) {
     return (
       <div className="ko-mc empty">
+        <div className="ko-mc-top">
+          {matchLabel && <span className="ko-mc-label">{matchLabel}</span>}
+          {kickoffLabel && <span className="ko-mc-date">{kickoffLabel}</span>}
+        </div>
         <span className="ko-mc-tbd">Por definir</span>
       </div>
     );
@@ -145,7 +185,10 @@ function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
 
   return (
     <div className={"ko-mc" + (decided ? " ko-decided" : "") + (locked ? " is-locked" : "")}>
-      {matchLabel && <span className="ko-mc-label">{matchLabel}</span>}
+      <div className="ko-mc-top">
+        {matchLabel && <span className="ko-mc-label">{matchLabel}</span>}
+        {kickoffLabel && <span className="ko-mc-date">{kickoffLabel}</span>}
+      </div>
       <div className={homeClass}>
         <span className="ko-mc-flag">{homeT ? homeT.flag : "?"}</span>
         <span className="ko-mc-name">{homeT ? homeT.name : home}</span>
@@ -179,6 +222,17 @@ function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
           onChange={function(e) { if (onChange) onChange('a', e.target.value); }}
         />
       </div>
+      {hasOfficial && (
+        <div className="ko-mc-official">
+          <span className="ko-mc-official-label">{officialTeamsMatch ? "Final real" : "Real"}</span>
+          <span className="ko-mc-official-score">
+            {!officialTeamsMatch && officialHomeT && <span className="ko-mc-official-flag">{officialHomeT.flag}</span>}
+            {officialMatch.score.h} <span>·</span> {officialMatch.score.a}
+            {!officialTeamsMatch && officialAwayT && <span className="ko-mc-official-flag">{officialAwayT.flag}</span>}
+          </span>
+          {matchPoints > 0 && <span className="ko-mc-points">+{matchPoints} {matchPoints === 1 ? "punto" : "puntos"}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -186,7 +240,7 @@ function KOMatchCard({ home, away, score, matchLabel, locked, onChange }) {
 /* ────────────────────────────────────────────────────────────────
    BracketRound — columna de partidos para una ronda
    ──────────────────────────────────────────────────────────────── */
-function BracketRound({ title, sub, matches, round, locked, onScoreChange, isMatchClosed }) {
+function BracketRound({ title, sub, matches, officialMatches, round, locked, onScoreChange, isMatchClosed }) {
   return (
     <div className="br-round">
       <div className="br-round-head">
@@ -201,6 +255,8 @@ function BracketRound({ title, sub, matches, round, locked, onScoreChange, isMat
               home={m.home}
               away={m.away}
               score={m.score}
+              officialMatch={(officialMatches || [])[i]}
+              schedule={getKOSchedule(round, i)}
               matchLabel={"P" + (i + 1)}
               locked={locked || !!(isMatchClosed && isMatchClosed(round, i))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange(round, i, k, val); }}
@@ -215,7 +271,7 @@ function BracketRound({ title, sub, matches, round, locked, onScoreChange, isMat
 /* ────────────────────────────────────────────────────────────────
    BracketView — bracket completo con todas las rondas
    ──────────────────────────────────────────────────────────────── */
-function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, isMatchClosed }) {
+function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, locked, phase2Open, isMatchClosed }) {
   // Siempre mostrar 16 slots — rellenar con vacíos si el admin aún no configuró los cruces
   const rawPairs = r16Pairs || [];
   const fullPairs = Array.from({ length: 16 }, function(_, i) {
@@ -225,10 +281,13 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
   koScores = koScores || {};
 
   const bracket = buildBracket(fullPairs, koScores);
+  const officialBracket = officialKoScores ? buildBracket(fullPairs, officialKoScores) : null;
 
   // Columna final: Final + 3er lugar
   const finMatch = bracket.fin;
   const thirdMatch = bracket.third;
+  const officialFinMatch = officialBracket ? officialBracket.fin : null;
+  const officialThirdMatch = officialBracket ? officialBracket.third : null;
   const champ = finMatch ? finMatch.winner : null;
   const champT = champ ? KT2[champ] : null;
 
@@ -250,6 +309,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
           title="Dieciseisavos"
           sub={"16 partidos"}
           matches={bracket.r16}
+          officialMatches={officialBracket ? officialBracket.r16 : null}
           round="r16"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -259,6 +319,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
           title="Octavos"
           sub={"8 partidos"}
           matches={bracket.qf}
+          officialMatches={officialBracket ? officialBracket.qf : null}
           round="qf"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -268,6 +329,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
           title="Cuartos"
           sub={"4 partidos"}
           matches={bracket.sf}
+          officialMatches={officialBracket ? officialBracket.sf : null}
           round="sf"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -277,6 +339,7 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
           title="Semifinales"
           sub={"2 partidos"}
           matches={bracket.semis}
+          officialMatches={officialBracket ? officialBracket.semis : null}
           round="semis"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -294,6 +357,8 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
               home={finMatch.home}
               away={finMatch.away}
               score={finMatch.score}
+              officialMatch={officialFinMatch}
+              schedule={getKOSchedule("fin", 0)}
               matchLabel="Final"
               locked={locked || !!(isMatchClosed && isMatchClosed('fin', 0))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('fin', 0, k, val); }}
@@ -302,6 +367,8 @@ function BracketView({ r16Pairs, koScores, onScoreChange, locked, phase2Open, is
               home={thirdMatch.home}
               away={thirdMatch.away}
               score={thirdMatch.score}
+              officialMatch={officialThirdMatch}
+              schedule={getKOSchedule("third", 0)}
               matchLabel="3.er lugar"
               locked={locked || !!(isMatchClosed && isMatchClosed('third', 0))}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('third', 0, k, val); }}
