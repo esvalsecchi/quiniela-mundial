@@ -128,6 +128,27 @@ function countKOScores(koScores) {
     sum + ((koScores[round] || []).filter((s) => QMScore.hasScore(s)).length)
   ), 0) + (QMScore.hasScore(koScores.fin) ? 1 : 0) + (QMScore.hasScore(koScores.third) ? 1 : 0);
 }
+function phase2OpenForGroup(config, groupId) {
+  config = asRecord(config);
+  groupId = slugify(groupId || (QM && QM.DEFAULT_GROUP_ID) || "hogar");
+  const byGroup = asRecord(config.phase2OpenByGroup);
+  if (Object.keys(byGroup).length) return !!byGroup[groupId];
+  return !!config.phase2Open;
+}
+function configWithPhase2ForGroup(config, groupId, value) {
+  config = asRecord(config);
+  groupId = slugify(groupId || (QM && QM.DEFAULT_GROUP_ID) || "hogar");
+  return {
+    ...config,
+    groupId,
+    phase2Open: !!value,
+    phase2OpenByGroup: {
+      ...asRecord(config.phase2OpenByGroup),
+      [groupId]: !!value,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
 function applyTournamentState(cur, state) {
   cur = cur || {};
   state = state || {};
@@ -410,7 +431,7 @@ function App() {
   const pred = pid ? withDefaults(all[pid]) : blankPred();
   const lockMode = config && config.locked !== undefined ? config.locked : QM.CONFIG.locked;
   const lockedNow = lockMode === true;
-  const phase2Open = !!(config && config.phase2Open);
+  const phase2Open = phase2OpenForGroup(config, group && group.id);
   const groupName = (meta && meta.name) || (group && group.name) || QM.META.brand;
 
   function hasOfficialScore(mid) {
@@ -663,7 +684,11 @@ function App() {
     setOfficial(blank); QMCloud.saveOfficial(blank);
   }
   function setLock(val) { const next = { ...config, locked: val }; setConfig(next); QMCloud.saveConfig(next); }
-  function setPhase2(val) { const next = { ...config, phase2Open: val }; setConfig(next); QMCloud.saveConfig(next); }
+  function setPhase2(val) {
+    const next = configWithPhase2ForGroup(config, group && group.id, val);
+    setConfig(next);
+    QMCloud.saveConfig(next);
+  }
   function syncOfficialScores(newScores) {
     updateOfficial((p) => {
       Object.entries(newScores).forEach(([mid, score]) => {
