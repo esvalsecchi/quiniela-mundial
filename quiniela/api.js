@@ -159,6 +159,25 @@
     return koRoundFromNote((comp && comp.altGameNote) || e.name || "");
   }
 
+  // Mapea un evento de eliminatoria a su índice de slot oficial (por hora de inicio
+  // contra KO_SCHEDULE). Esto garantiza que cada partido caiga en su posición correcta
+  // del bracket — el orden por número de partido (73→88) es lo que hace que los cruces
+  // de la siguiente ronda (89=G73 vs G74, etc.) sean correctos.
+  function koSlotIndex(round, event) {
+    if (round === "fin" || round === "third") return 0;
+    var sched = ((window.QM.KO_SCHEDULE || {})[round]) || [];
+    var t = Date.parse(event && event.date);
+    if (isNaN(t) || !sched.length) return -1;
+    var best = -1, bestDiff = Infinity;
+    sched.forEach(function(s, i) {
+      var st = Date.parse(s && s.kickoffAt);
+      if (isNaN(st)) return;
+      var diff = Math.abs(st - t);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    });
+    return best;
+  }
+
   function eventTeams(e) {
     var comp = (e.competitions || [])[0];
     var teams = comp ? (comp.competitors || []) : [];
@@ -171,27 +190,32 @@
   }
 
   function parseR16PairsFromESPN(events) {
-    return (events || [])
-      .filter(function(e) { return koEventRound(e) === "r16"; })
-      .sort(function(a, b) { return String(a.date || "").localeCompare(String(b.date || "")); })
-      .map(eventTeams)
-      .filter(Boolean)
-      .slice(0, 16)
-      .map(function(t) { return { home: t.home, away: t.away }; });
+    // Array de 16 slots, cada cruce colocado en SU índice oficial (no por orden de fecha).
+    var pairs = [];
+    for (var i = 0; i < 16; i++) pairs.push(null);
+    (events || []).forEach(function(e) {
+      if (koEventRound(e) !== "r16") return;
+      var idx = koSlotIndex("r16", e);
+      if (idx < 0 || idx > 15) return;
+      var t = eventTeams(e);
+      if (t) pairs[idx] = { home: t.home, away: t.away };
+    });
+    return pairs;
   }
 
   function parseKOScoresFromESPN(events) {
+    var sizes = { r16: 16, qf: 8, sf: 4, semis: 2 };
     var out = {};
-    var rounds = ["r16", "qf", "sf", "semis"];
-    rounds.forEach(function(r) { out[r] = []; });
+    Object.keys(sizes).forEach(function(r) {
+      out[r] = [];
+      for (var i = 0; i < sizes[r]; i++) out[r].push(null);
+    });
 
     function rowWinner(row) {
       return row && (row.winner === true || row.winner === "true");
     }
 
-    (events || []).slice().sort(function(a, b) {
-      return String(a.date || "").localeCompare(String(b.date || ""));
-    }).forEach(function(e) {
+    (events || []).forEach(function(e) {
       var round = koEventRound(e);
       if (!round) return;
       var t = eventTeams(e);
@@ -204,12 +228,14 @@
         if (rowWinner(t.homeRow)) score.w = t.home;
         else if (rowWinner(t.awayRow)) score.w = t.away;
       }
-      if (round === "fin" || round === "third") out[round] = score;
-      else out[round].push(score);
+      if (round === "fin" || round === "third") { out[round] = score; return; }
+      var idx = koSlotIndex(round, e);
+      if (idx >= 0 && idx < out[round].length) out[round][idx] = score;
     });
 
+    // Descartar rondas que no tienen ningún resultado todavía.
     Object.keys(out).forEach(function(k) {
-      if (Array.isArray(out[k]) && !out[k].length) delete out[k];
+      if (Array.isArray(out[k]) && !out[k].some(function(s) { return s; })) delete out[k];
     });
     return out;
   }
@@ -221,6 +247,7 @@
       if (code) thirdByCode[code] = true;
     });
     return (r16Pairs || []).reduce(function(acc, pair) {
+      if (!pair) return acc;
       [pair.home, pair.away].forEach(function(code) {
         if (thirdByCode[code] && !acc.includes(code)) acc.push(code);
       });
@@ -325,13 +352,14 @@
     }
 
     var r16Pairs = parseR16PairsFromESPN(events);
+    var hasPairs = r16Pairs.some(function(p) { return p && p.home && p.away; });
     var thirdsFromPairs = thirdsFromR16Pairs(standings.groups, r16Pairs);
     return {
       source: "espn",
       scores: parseESPN(events),
       groups: standings.groups || {},
       thirds: thirdsFromPairs.length ? thirdsFromPairs : (standings.thirds || []),
-      bracketPairs: r16Pairs.length ? { r16: r16Pairs } : {},
+      bracketPairs: hasPairs ? { r16: r16Pairs } : {},
       koScores: parseKOScoresFromESPN(events),
     };
   }

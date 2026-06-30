@@ -38,13 +38,21 @@
     return (w === match.home || w === match.away) ? w : null;
   }
 
+  // Ganador efectivo: usa el precalculado por buildBracket (que puede incluir el
+  // default de empate del jugador) y si no, lo recalcula del marcador.
+  function matchWinner(match) {
+    if (!match) return null;
+    if (match.winner) return match.winner;
+    return koWinner(match);
+  }
+
   function scoreKOMatch(predMatch, officialMatch) {
     if (!sameTeams(predMatch, officialMatch)) return 0;
     if (!hasScore(officialMatch.score) || !hasScore(predMatch.score)) return 0;
     const oh = +officialMatch.score.h, oa = +officialMatch.score.a;
     const ph = +predMatch.score.h, pa = +predMatch.score.a;
-    const officialWinner = koWinner(officialMatch);
-    const predWinner = koWinner(predMatch);
+    const officialWinner = matchWinner(officialMatch);
+    const predWinner = matchWinner(predMatch);
     const sameWinner = officialWinner && predWinner && officialWinner === predWinner;
     if (ph === oh && pa === oa) {
       if (oh !== oa || sameWinner) return P.exacto;
@@ -56,8 +64,8 @@
 
   function scoreKOBracket(pred, official) {
     if (!window.buildBracket || !official.bracketPairs || !(official.bracketPairs.r16 || []).length || !official.koScores) return 0;
-    const playerBracket = window.buildBracket(official.bracketPairs.r16, pred.koScores || {});
-    const officialBracket = window.buildBracket(official.bracketPairs.r16, official.koScores || {});
+    const playerBracket = window.buildBracket(official.bracketPairs.r16, pred.koScores || {}, true);
+    const officialBracket = window.buildBracket(official.bracketPairs.r16, official.koScores || {}, false);
     if (!playerBracket || !officialBracket) return 0;
 
     let points = 0;

@@ -16,12 +16,29 @@ function getKOWinner(home, away, score) {
   return null; // empate = no resuelto
 }
 
-function buildBracket(r16Pairs, koScores) {
+// ¿El marcador es un empate completo (ambos números puestos e iguales)?
+function isKOTie(score) {
+  if (!score) return false;
+  const h = (score.h !== '' && score.h != null) ? +score.h : NaN;
+  const a = (score.a !== '' && score.a != null) ? +score.a : NaN;
+  return !isNaN(h) && !isNaN(a) && h === a;
+}
+
+// defaultTieToHome: para PRONÓSTICOS de jugador, un empate sin ganador elegido
+// avanza al local por defecto (editable). Para resultados OFICIALES queda en false.
+function buildBracket(r16Pairs, koScores, defaultTieToHome) {
   r16Pairs = r16Pairs || [];
   koScores = koScores || {};
 
+  function winnerOf(home, away, score) {
+    const w = getKOWinner(home, away, score);
+    if (w) return w;
+    if (defaultTieToHome && home && away && isKOTie(score)) return home;
+    return null;
+  }
+
   function makeMatch(home, away, score) {
-    return { home: home || null, away: away || null, score: score || null, winner: getKOWinner(home, away, score) };
+    return { home: home || null, away: away || null, score: score || null, winner: winnerOf(home, away, score) };
   }
 
   // R16 — 16 partidos definidos por el admin
@@ -156,9 +173,10 @@ function scoreKOMatchCard(predMatch, officialMatch) {
 /* ────────────────────────────────────────────────────────────────
    KOMatchCard — muestra un partido del bracket con inputs
    ──────────────────────────────────────────────────────────────── */
-function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, locked, onChange }) {
-  const predMatch = { home: home, away: away, score: score || null };
-  const winner = getKOWinner(home, away, score);
+function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, schedule, matchLabel, locked, onChange }) {
+  // El ganador viene precalculado del bracket (puede incluir el default de empate).
+  const winner = (winnerProp != null) ? winnerProp : getKOWinner(home, away, score);
+  const predMatch = { home: home, away: away, score: score || null, winner: winner };
   const homeT = home ? KT2[home] : null;
   const awayT = away ? KT2[away] : null;
   const decided = !!(winner);
@@ -185,8 +203,9 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
   const aVal = (score && score.a !== '' && score.a != null) ? String(score.a) : '';
   const hasBothScores = hVal !== '' && aVal !== '';
   const isTie = hasBothScores && +hVal === +aVal;
-  const needsTieWinner = isTie && !winner;
-  const decidedByTieWinner = isTie && !!winner;
+  const explicitTieWinner = score && (score.w || score.winner);
+  const needsTieWinner = isTie && !winner;             // sin resolver (solo pasa en oficial)
+  const decidedByDefault = isTie && !!winner && !explicitTieWinner; // empate resuelto por default
 
   const homeClass = "ko-mc-row" + (decided ? (winner === home ? " ko-w" : " ko-l") : "");
   const awayClass = "ko-mc-row away" + (decided ? (winner === away ? " ko-w" : " ko-l") : "");
@@ -213,7 +232,7 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
       </div>
       <div className="ko-mc-sep">
         {decided
-          ? <span className="ko-mc-adv">→ avanza{decidedByTieWinner ? " por desempate" : ""}</span>
+          ? <span className="ko-mc-adv">→ avanza{isTie ? (decidedByDefault ? " (por defecto)" : " por desempate") : ""}</span>
           : <span className="ko-mc-vs">VS</span>}
       </div>
       <div className={awayClass}>
@@ -232,17 +251,19 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
       </div>
       {isTie && (
         <div className="ko-mc-tiebreak">
-          <span>{winner ? "Ganador del desempate" : "Elige quién avanza"}</span>
+          <span>{explicitTieWinner
+            ? "✓ Ganador del desempate"
+            : (winner ? "Avanza por defecto — toca para cambiar" : "⚠️ Elige quién avanza")}</span>
           <button
             type="button"
-            className={"ko-mc-tiebtn" + (winner === home ? " on" : "")}
+            className={"ko-mc-tiebtn" + (winner === home ? (explicitTieWinner ? " on" : " on is-default") : "")}
             disabled={locked || !onChange}
             onClick={function() { if (onChange) onChange('w', home); }}>
             {homeT ? homeT.flag : ""} {homeT ? homeT.name : home}
           </button>
           <button
             type="button"
-            className={"ko-mc-tiebtn" + (winner === away ? " on" : "")}
+            className={"ko-mc-tiebtn" + (winner === away ? (explicitTieWinner ? " on" : " on is-default") : "")}
             disabled={locked || !onChange}
             onClick={function() { if (onChange) onChange('w', away); }}>
             {awayT ? awayT.flag : ""} {awayT ? awayT.name : away}
@@ -282,6 +303,7 @@ function BracketRound({ title, sub, matches, officialMatches, round, locked, onS
               home={m.home}
               away={m.away}
               score={m.score}
+              winner={m.winner}
               officialMatch={(officialMatches || [])[i]}
               schedule={getKOSchedule(round, i)}
               matchLabel={"P" + (i + 1)}
@@ -307,8 +329,8 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
   const pairsReady = rawPairs.filter(function(p) { return p && p.home && p.away; }).length;
   koScores = koScores || {};
 
-  const bracket = buildBracket(fullPairs, koScores);
-  const officialBracket = officialKoScores ? buildBracket(fullPairs, officialKoScores) : null;
+  const bracket = buildBracket(fullPairs, koScores, true);
+  const officialBracket = officialKoScores ? buildBracket(fullPairs, officialKoScores, false) : null;
 
   // Columna final: Final + 3er lugar
   const finMatch = bracket.fin;
@@ -384,6 +406,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               home={finMatch.home}
               away={finMatch.away}
               score={finMatch.score}
+              winner={finMatch.winner}
               officialMatch={officialFinMatch}
               schedule={getKOSchedule("fin", 0)}
               matchLabel="Final"
@@ -394,6 +417,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               home={thirdMatch.home}
               away={thirdMatch.away}
               score={thirdMatch.score}
+              winner={thirdMatch.winner}
               officialMatch={officialThirdMatch}
               schedule={getKOSchedule("third", 0)}
               matchLabel="3.er lugar"

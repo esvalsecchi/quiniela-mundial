@@ -193,15 +193,19 @@ function applyTournamentState(cur, state) {
   const rounds = ["r16", "qf", "sf", "semis"];
   cur.koScores = cur.koScores || {};
   rounds.forEach((round) => {
-    if (!Array.isArray(incomingKO[round]) || !incomingKO[round].length) return;
-    if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
-    incomingKO[round].forEach((score, idx) => {
-      if (!QMScore.hasScore(score)) return;
-      const nextScore = preserveTieWinner(cur.koScores[round][idx], score);
-      if (sameScore(cur.koScores[round][idx], nextScore)) return;
-      cur.koScores[round][idx] = nextScore;
-      changed++;
-    });
+    const incoming = incomingKO[round];
+    // El parser entrega arrays YA indexados por número de partido (slot oficial).
+    // Reemplazamos la ronda completa para limpiar datos viejos desalineados,
+    // preservando ganadores de desempate puestos a mano que la API no traiga.
+    if (!Array.isArray(incoming)) return;
+    const existing = Array.isArray(cur.koScores[round]) ? cur.koScores[round] : [];
+    const len = Math.max(incoming.length, existing.length);
+    const merged = [];
+    for (let idx = 0; idx < len; idx++) {
+      const inc = incoming[idx];
+      merged[idx] = QMScore.hasScore(inc) ? preserveTieWinner(existing[idx], inc) : null;
+    }
+    if (!sameJSON(existing, merged)) { cur.koScores[round] = merged; changed++; }
   });
   ["fin", "third"].forEach((round) => {
     if (!QMScore.hasScore(incomingKO[round])) return;
@@ -548,10 +552,10 @@ function App() {
         ? cur.koScores[round]
         : cur.koScores[round][matchIdx];
       if (currentScore && QMScore.hasScore(currentScore) && +currentScore.h !== +currentScore.a) delete currentScore.w;
-      // Derive ko2 from bracket
+      // Derive ko2 from bracket (pronóstico: empate avanza local por defecto)
       const r16Pairs = (official.bracketPairs || {}).r16 || [];
       if (window.buildBracket && r16Pairs.length > 0) {
-        const bracket = window.buildBracket(r16Pairs, cur.koScores);
+        const bracket = window.buildBracket(r16Pairs, cur.koScores, true);
         if (bracket) cur.ko2 = window.deriveKO(bracket);
       }
       QMCloud.savePlayer(pid, cur);
