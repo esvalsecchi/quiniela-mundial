@@ -185,6 +185,10 @@
     var rounds = ["r16", "qf", "sf", "semis"];
     rounds.forEach(function(r) { out[r] = []; });
 
+    function rowWinner(row) {
+      return row && (row.winner === true || row.winner === "true");
+    }
+
     (events || []).slice().sort(function(a, b) {
       return String(a.date || "").localeCompare(String(b.date || ""));
     }).forEach(function(e) {
@@ -196,6 +200,10 @@
       var aScore = parseInt(t.awayRow.score, 10);
       if (isNaN(hScore) || isNaN(aScore)) return;
       var score = { h: hScore, a: aScore };
+      if (hScore === aScore) {
+        if (rowWinner(t.homeRow)) score.w = t.home;
+        else if (rowWinner(t.awayRow)) score.w = t.away;
+      }
       if (round === "fin" || round === "third") out[round] = score;
       else out[round].push(score);
     });

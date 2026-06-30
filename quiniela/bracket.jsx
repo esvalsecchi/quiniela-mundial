@@ -11,6 +11,8 @@ function getKOWinner(home, away, score) {
   if (isNaN(h) || isNaN(a)) return null;
   if (h > a) return home;
   if (a > h) return away;
+  const tieWinner = score && (score.w || score.winner);
+  if (tieWinner === home || tieWinner === away) return tieWinner;
   return null; // empate = no resuelto
 }
 
@@ -146,7 +148,9 @@ function sameKOTeams(predMatch, officialMatch) {
 
 function scoreKOMatchCard(predMatch, officialMatch) {
   if (!sameKOTeams(predMatch, officialMatch)) return 0;
-  return QMScore.scoreMatch(predMatch.score, officialMatch.score);
+  return QMScore.scoreKOMatch
+    ? QMScore.scoreKOMatch(predMatch, officialMatch)
+    : QMScore.scoreMatch(predMatch.score, officialMatch.score);
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -179,12 +183,16 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
 
   const hVal = (score && score.h !== '' && score.h != null) ? String(score.h) : '';
   const aVal = (score && score.a !== '' && score.a != null) ? String(score.a) : '';
+  const hasBothScores = hVal !== '' && aVal !== '';
+  const isTie = hasBothScores && +hVal === +aVal;
+  const needsTieWinner = isTie && !winner;
+  const decidedByTieWinner = isTie && !!winner;
 
   const homeClass = "ko-mc-row" + (decided ? (winner === home ? " ko-w" : " ko-l") : "");
   const awayClass = "ko-mc-row away" + (decided ? (winner === away ? " ko-w" : " ko-l") : "");
 
   return (
-    <div className={"ko-mc" + (decided ? " ko-decided" : "") + (locked ? " is-locked" : "")}>
+    <div className={"ko-mc" + (decided ? " ko-decided" : "") + (needsTieWinner ? " ko-needs-winner" : "") + (locked ? " is-locked" : "")}>
       <div className="ko-mc-top">
         {matchLabel && <span className="ko-mc-label">{matchLabel}</span>}
         {kickoffLabel && <span className="ko-mc-date">{kickoffLabel}</span>}
@@ -205,7 +213,7 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
       </div>
       <div className="ko-mc-sep">
         {decided
-          ? <span className="ko-mc-adv">→ avanza</span>
+          ? <span className="ko-mc-adv">→ avanza{decidedByTieWinner ? " por desempate" : ""}</span>
           : <span className="ko-mc-vs">VS</span>}
       </div>
       <div className={awayClass}>
@@ -222,6 +230,25 @@ function KOMatchCard({ home, away, score, officialMatch, schedule, matchLabel, l
           onChange={function(e) { if (onChange) onChange('a', e.target.value); }}
         />
       </div>
+      {isTie && (
+        <div className="ko-mc-tiebreak">
+          <span>{winner ? "Ganador del desempate" : "Elige quién avanza"}</span>
+          <button
+            type="button"
+            className={"ko-mc-tiebtn" + (winner === home ? " on" : "")}
+            disabled={locked || !onChange}
+            onClick={function() { if (onChange) onChange('w', home); }}>
+            {homeT ? homeT.flag : ""} {homeT ? homeT.name : home}
+          </button>
+          <button
+            type="button"
+            className={"ko-mc-tiebtn" + (winner === away ? " on" : "")}
+            disabled={locked || !onChange}
+            onClick={function() { if (onChange) onChange('w', away); }}>
+            {awayT ? awayT.flag : ""} {awayT ? awayT.name : away}
+          </button>
+        </div>
+      )}
       {hasOfficial && (
         <div className="ko-mc-official">
           <span className="ko-mc-official-label">{officialTeamsMatch ? "Final real" : "Real"}</span>

@@ -85,7 +85,13 @@ function toggleInSet(arr, code, cap) {
   return [...arr, code];
 }
 function sameScore(a, b) {
-  return QMScore.hasScore(a) && QMScore.hasScore(b) && +a.h === +b.h && +a.a === +b.a;
+  return QMScore.hasScore(a) && QMScore.hasScore(b) && +a.h === +b.h && +a.a === +b.a && (a.w || null) === (b.w || null);
+}
+function preserveTieWinner(current, incoming) {
+  if (!QMScore.hasScore(current) || !QMScore.hasScore(incoming)) return incoming;
+  if (+current.h !== +incoming.h || +current.a !== +incoming.a || +incoming.h !== +incoming.a) return incoming;
+  if ((incoming.w || incoming.winner) || !(current.w || current.winner)) return incoming;
+  return { ...incoming, w: current.w || current.winner };
 }
 function sameJSON(a, b) {
   return JSON.stringify(a || null) === JSON.stringify(b || null);
@@ -143,14 +149,18 @@ function applyTournamentState(cur, state) {
     if (!Array.isArray(incomingKO[round]) || !incomingKO[round].length) return;
     if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
     incomingKO[round].forEach((score, idx) => {
-      if (!QMScore.hasScore(score) || sameScore(cur.koScores[round][idx], score)) return;
-      cur.koScores[round][idx] = score;
+      if (!QMScore.hasScore(score)) return;
+      const nextScore = preserveTieWinner(cur.koScores[round][idx], score);
+      if (sameScore(cur.koScores[round][idx], nextScore)) return;
+      cur.koScores[round][idx] = nextScore;
       changed++;
     });
   });
   ["fin", "third"].forEach((round) => {
-    if (!QMScore.hasScore(incomingKO[round]) || sameScore(cur.koScores[round], incomingKO[round])) return;
-    cur.koScores[round] = incomingKO[round];
+    if (!QMScore.hasScore(incomingKO[round])) return;
+    const nextScore = preserveTieWinner(cur.koScores[round], incomingKO[round]);
+    if (sameScore(cur.koScores[round], nextScore)) return;
+    cur.koScores[round] = nextScore;
     changed++;
   });
 
@@ -487,6 +497,10 @@ function App() {
         if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
         cur.koScores[round][matchIdx][k] = val;
       }
+      const currentScore = (round === 'fin' || round === 'third')
+        ? cur.koScores[round]
+        : cur.koScores[round][matchIdx];
+      if (currentScore && QMScore.hasScore(currentScore) && +currentScore.h !== +currentScore.a) delete currentScore.w;
       // Derive ko2 from bracket
       const r16Pairs = (official.bracketPairs || {}).r16 || [];
       if (window.buildBracket && r16Pairs.length > 0) {
@@ -512,6 +526,10 @@ function App() {
         if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
         cur.koScores[round][matchIdx][k] = val;
       }
+      const currentScore = (round === 'fin' || round === 'third')
+        ? cur.koScores[round]
+        : cur.koScores[round][matchIdx];
+      if (currentScore && QMScore.hasScore(currentScore) && +currentScore.h !== +currentScore.a) delete currentScore.w;
       // Derive official ko from bracket
       const r16Pairs = (cur.bracketPairs || {}).r16 || [];
       if (window.buildBracket && r16Pairs.length > 0) {

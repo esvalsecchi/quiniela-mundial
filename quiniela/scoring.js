@@ -29,9 +29,29 @@
     return a && b && a.home && a.away && a.home === b.home && a.away === b.away;
   }
 
+  function koWinner(match) {
+    if (!match || !match.home || !match.away || !hasScore(match.score)) return null;
+    const h = +match.score.h, a = +match.score.a;
+    if (h > a) return match.home;
+    if (a > h) return match.away;
+    const w = match.score.w || match.score.winner;
+    return (w === match.home || w === match.away) ? w : null;
+  }
+
   function scoreKOMatch(predMatch, officialMatch) {
     if (!sameTeams(predMatch, officialMatch)) return 0;
-    return scoreMatch(predMatch.score, officialMatch.score);
+    if (!hasScore(officialMatch.score) || !hasScore(predMatch.score)) return 0;
+    const oh = +officialMatch.score.h, oa = +officialMatch.score.a;
+    const ph = +predMatch.score.h, pa = +predMatch.score.a;
+    const officialWinner = koWinner(officialMatch);
+    const predWinner = koWinner(predMatch);
+    const sameWinner = officialWinner && predWinner && officialWinner === predWinner;
+    if (ph === oh && pa === oa) {
+      if (oh !== oa || sameWinner) return P.exacto;
+      return 0;
+    }
+    if (sameWinner) return P.resultado;
+    return 0;
   }
 
   function scoreKOBracket(pred, official) {
@@ -145,5 +165,5 @@
     return { first: sorted[0], second: sorted[1], third: sorted[2] };
   }
 
-  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore, scoreMatch, calcGroupStandings };
+  window.QMScore = { scorePlayer, standings, hasOfficialResults, playerHasPredictions, hasScore, scoreMatch, scoreKOMatch, calcGroupStandings };
 })();
