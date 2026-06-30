@@ -9,18 +9,31 @@ function initials(name) {
   const p = name.trim().split(/\s+/);
   return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[1][0]).toUpperCase();
 }
+function asRecord(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+function asArray(v) { return Array.isArray(v) ? v : []; }
 function blankKO() { return { r16: [], qf: [], sf: [], fin: [], champ: null, third: null }; }
+function withDefaultKO(ko) {
+  ko = asRecord(ko);
+  return {
+    r16: asArray(ko.r16),
+    qf: asArray(ko.qf),
+    sf: asArray(ko.sf),
+    fin: asArray(ko.fin),
+    champ: ko.champ || null,
+    third: ko.third || null,
+  };
+}
 function blankPred() { return { groups: {}, thirds: [], scores: {}, ko: blankKO(), ko2: blankKO(), koScores: {} }; }
 function withDefaults(p) {
-  p = p || {};
+  p = asRecord(p);
   return {
     ...p,
-    groups: p.groups || {},
-    thirds: p.thirds || [],
-    scores: p.scores || {},
-    ko: Object.assign(blankKO(), p.ko || {}),
-    ko2: Object.assign(blankKO(), p.ko2 || {}),
-    koScores: p.koScores || {},
+    groups: asRecord(p.groups),
+    thirds: asArray(p.thirds),
+    scores: asRecord(p.scores),
+    ko: withDefaultKO(p.ko),
+    ko2: withDefaultKO(p.ko2),
+    koScores: asRecord(p.koScores),
   };
 }
 function dedup(a) { return a.filter((x, i) => x && a.indexOf(x) === i); }
@@ -58,12 +71,13 @@ function clearRememberedGroup() {
 }
 
 function poolFrom(p) {
+  p = withDefaults(p);
   const direct = [];
   QM.GROUPS.forEach((g) => { const v = (p.groups || {})[g.id] || {}; if (v.first) direct.push(v.first); if (v.second) direct.push(v.second); });
   return dedup(direct.concat(p.thirds || []));
 }
 function cleanKO(ko, pool) {
-  ko = ko || {};
+  ko = withDefaultKO(ko);
   const r16 = (ko.r16 || []).filter((c) => pool.includes(c)).slice(0, CAPS.r16);
   const qf = (ko.qf || []).filter((c) => r16.includes(c)).slice(0, CAPS.qf);
   const sf = (ko.sf || []).filter((c) => qf.includes(c)).slice(0, CAPS.sf);
@@ -73,9 +87,14 @@ function cleanKO(ko, pool) {
   return { r16, qf, sf, fin, champ, third };
 }
 function normalize(p) {
-  const validThirds = QM.GROUPS.map((g) => (p.groups[g.id] || {}).third).filter(Boolean);
-  p.thirds = (p.thirds || []).filter((c) => validThirds.includes(c)).slice(0, 8);
+  p.groups = asRecord(p.groups);
+  p.thirds = asArray(p.thirds);
+  p.scores = asRecord(p.scores);
+  p.koScores = asRecord(p.koScores);
+  const validThirds = QM.GROUPS.map((g) => (asRecord(p.groups[g.id])).third).filter(Boolean);
+  p.thirds = p.thirds.filter((c) => validThirds.includes(c)).slice(0, 8);
   p.ko = cleanKO(p.ko, poolFrom(p));
+  p.ko2 = withDefaultKO(p.ko2);
   return p;
 }
 function toggleInSet(arr, code, cap) {
@@ -447,7 +466,7 @@ function App() {
   }
   const pickGroup = (gid, slot, code) => updatePlayer((p) => {
     if (groupClosed(gid)) return;
-    const g = p.groups[gid] || {};
+    const g = asRecord(p.groups[gid]);
     if (g[slot] === code) delete g[slot];
     else { ["first", "second", "third"].forEach((s) => { if (g[s] === code) delete g[s]; }); g[slot] = code; }
     p.groups[gid] = g;
@@ -458,7 +477,9 @@ function App() {
   });
   const setScore = (mid, k, val) => updatePlayer((p) => {
     if (matchClosed(mid)) return;
-    p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val;
+    p.scores = asRecord(p.scores);
+    p.scores[mid] = asRecord(p.scores[mid]);
+    p.scores[mid][k] = val;
     const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
     if (groupId) {
       const standings = QMScore.calcGroupStandings(groupId, p.scores);
@@ -615,14 +636,16 @@ function App() {
     });
   }
   const pickGroupOff = (gid, slot, code) => updateOfficial((p) => {
-    const g = p.groups[gid] || {};
+    const g = asRecord(p.groups[gid]);
     if (g[slot] === code) delete g[slot];
     else { ["first", "second", "third"].forEach((s) => { if (g[s] === code) delete g[s]; }); g[slot] = code; }
     p.groups[gid] = g;
   });
   const toggleThirdOff = (code) => updateOfficial((p) => { p.thirds = toggleInSet(p.thirds, code, 8); });
   const setScoreOff = (mid, k, val) => updateOfficial((p) => {
-    p.scores[mid] = p.scores[mid] || {}; p.scores[mid][k] = val;
+    p.scores = asRecord(p.scores);
+    p.scores[mid] = asRecord(p.scores[mid]);
+    p.scores[mid][k] = val;
     const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
     if (groupId) {
       const standings = QMScore.calcGroupStandings(groupId, p.scores);
@@ -641,6 +664,7 @@ function App() {
   function syncOfficialScores(newScores) {
     updateOfficial((p) => {
       Object.entries(newScores).forEach(([mid, score]) => {
+        p.scores = asRecord(p.scores);
         p.scores[mid] = score;
         const groupId = QM.MATCHES.find((m) => m.id === mid)?.group;
         if (groupId) {
