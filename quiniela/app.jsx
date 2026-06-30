@@ -11,6 +11,13 @@ function initials(name) {
 }
 function asRecord(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
 function asArray(v) { return Array.isArray(v) ? v : []; }
+function asDenseArray(v) { return asArray(v).map((item) => item === undefined ? null : item); }
+function ensureArrayScoreSlot(koScores, round, matchIdx) {
+  koScores[round] = asDenseArray(koScores[round]);
+  while (koScores[round].length <= matchIdx) koScores[round].push(null);
+  koScores[round][matchIdx] = asRecord(koScores[round][matchIdx]);
+  return koScores[round][matchIdx];
+}
 function blankKO() { return { r16: [], qf: [], sf: [], fin: [], champ: null, third: null }; }
 function withDefaultKO(ko) {
   ko = asRecord(ko);
@@ -514,9 +521,7 @@ function App() {
         }
         cur.koScores[round][k] = val;
       } else {
-        if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
-        if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
-        cur.koScores[round][matchIdx][k] = val;
+        ensureArrayScoreSlot(cur.koScores, round, matchIdx)[k] = val;
       }
       const currentScore = (round === 'fin' || round === 'third')
         ? cur.koScores[round]
@@ -543,9 +548,7 @@ function App() {
         }
         cur.koScores[round][k] = val;
       } else {
-        if (!Array.isArray(cur.koScores[round])) cur.koScores[round] = [];
-        if (!cur.koScores[round][matchIdx]) cur.koScores[round][matchIdx] = {};
-        cur.koScores[round][matchIdx][k] = val;
+        ensureArrayScoreSlot(cur.koScores, round, matchIdx)[k] = val;
       }
       const currentScore = (round === 'fin' || round === 'third')
         ? cur.koScores[round]
