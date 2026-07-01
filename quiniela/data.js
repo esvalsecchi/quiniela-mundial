@@ -272,6 +272,7 @@
   const CONFIG = {
     lockAt: "2026-06-11T19:00:00Z",  // arranque del Mundial (inauguración)
     locked: null,                    // null = automático por fecha; true/false = forzado por admin
+    knockoutMode: "predictive",      // predictive = opción 1; progressive = opción 2
   };
 
   const META = {

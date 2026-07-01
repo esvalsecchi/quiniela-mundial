@@ -79,9 +79,36 @@
     return points;
   }
 
-  function scorePlayer(pred, official) {
+  const KO_PROGRESSIVE_MULTIPLIERS = { r16: 1, qf: 2, sf: 4, semis: 8, fin: 16, third: 16 };
+
+  function koScoreAt(koScores, round, idx) {
+    koScores = koScores || {};
+    if (round === "fin" || round === "third") return koScores[round] || null;
+    return Array.isArray(koScores[round]) ? koScores[round][idx] || null : null;
+  }
+
+  function scoreKOProgressive(pred, official) {
+    if (!window.buildBracket || !official.bracketPairs || !(official.bracketPairs.r16 || []).length || !official.koScores) return 0;
+    const officialBracket = window.buildBracket(official.bracketPairs.r16, official.koScores || {});
+    if (!officialBracket) return 0;
+
+    let points = 0;
+    ["r16", "qf", "sf", "semis"].forEach((round) => {
+      (officialBracket[round] || []).forEach((officialMatch, idx) => {
+        const predScore = koScoreAt(pred.koScores, round, idx);
+        const predMatch = { home: officialMatch.home, away: officialMatch.away, score: predScore };
+        points += scoreKOMatch(predMatch, officialMatch) * (KO_PROGRESSIVE_MULTIPLIERS[round] || 1);
+      });
+    });
+    points += scoreKOMatch({ home: officialBracket.fin.home, away: officialBracket.fin.away, score: koScoreAt(pred.koScores, "fin", 0) }, officialBracket.fin) * KO_PROGRESSIVE_MULTIPLIERS.fin;
+    points += scoreKOMatch({ home: officialBracket.third.home, away: officialBracket.third.away, score: koScoreAt(pred.koScores, "third", 0) }, officialBracket.third) * KO_PROGRESSIVE_MULTIPLIERS.third;
+    return points;
+  }
+
+  function scorePlayer(pred, official, knockoutMode) {
     const R = { groupPos: 0, thirds: 0, scores: 0, octavos: 0, cuartos: 0, semis: 0, finals: 0, champ: 0, third: 0 };
     pred = pred || {}; official = official || {};
+    knockoutMode = knockoutMode === "progressive" ? "progressive" : "predictive";
     const pg = pred.groups || {}, og = official.groups || {};
     const ps = pred.scores || {}, os = official.scores || {};
     const pk = pred.ko || {}, ok = official.ko || {};
@@ -105,8 +132,10 @@
       R.scores += scoreMatch(pv, off);
     });
 
-    // Eliminatoria — cada partido de la llave predictiva puntúa por resultado/marcador.
-    R.koScores = scoreKOBracket(pred, official);
+    // Eliminatoria
+    R.koScores = knockoutMode === "progressive"
+      ? scoreKOProgressive(pred, official)
+      : scoreKOBracket(pred, official);
 
     R.total = R.groupPos + R.thirds + R.scores + R.koScores;
     // agregados para la tabla
@@ -139,11 +168,11 @@
     return false;
   }
 
-  function standings(allPreds, official, players) {
+  function standings(allPreds, official, players, knockoutMode) {
     const roster = Array.isArray(players) ? players : QM.PLAYERS;
     const rows = roster.map((pl) => ({
       player: pl,
-      score: scorePlayer(allPreds[pl.id], official),
+      score: scorePlayer(allPreds[pl.id], official, knockoutMode),
       played: playerHasPredictions(allPreds[pl.id]),
     }));
     rows.sort((a, b) => b.score.total - a.score.total || (b.played - a.played) || a.player.name.localeCompare(b.player.name));

@@ -173,10 +173,44 @@ function scoreKOMatchCard(predMatch, officialMatch) {
     : QMScore.scoreMatch(predMatch.score, officialMatch.score);
 }
 
+const KO_PROGRESSIVE_MULTIPLIERS_UI = { r16: 1, qf: 2, sf: 4, semis: 8, fin: 16, third: 16 };
+
+function getKOMatchMultiplier(mode, round) {
+  return mode === "progressive" ? (KO_PROGRESSIVE_MULTIPLIERS_UI[round] || 1) : 1;
+}
+
+function getKOScoreForRound(koScores, round, idx) {
+  koScores = koScores || {};
+  if (round === "fin" || round === "third") return koScores[round] || null;
+  return Array.isArray(koScores[round]) ? koScores[round][idx] || null : null;
+}
+
+function withPredictedScores(teamBracket, koScores) {
+  if (!teamBracket) return null;
+  function withScore(round, match, idx) {
+    match = match || {};
+    const score = getKOScoreForRound(koScores, round, idx);
+    return {
+      home: match.home || null,
+      away: match.away || null,
+      score: score || null,
+      winner: getKOWinner(match.home, match.away, score),
+    };
+  }
+  return {
+    r16: (teamBracket.r16 || []).map(function(m, i) { return withScore("r16", m, i); }),
+    qf: (teamBracket.qf || []).map(function(m, i) { return withScore("qf", m, i); }),
+    sf: (teamBracket.sf || []).map(function(m, i) { return withScore("sf", m, i); }),
+    semis: (teamBracket.semis || []).map(function(m, i) { return withScore("semis", m, i); }),
+    fin: withScore("fin", teamBracket.fin, 0),
+    third: withScore("third", teamBracket.third, 0),
+  };
+}
+
 /* ────────────────────────────────────────────────────────────────
    KOMatchCard — muestra un partido del bracket con inputs
    ──────────────────────────────────────────────────────────────── */
-function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, schedule, matchLabel, locked, tiebreakLocked, onChange }) {
+function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, schedule, multiplier, matchLabel, locked, tiebreakLocked, onChange }) {
   // El marcador se bloquea al cerrar el partido, pero el desempate se puede seguir
   // eligiendo (tiebreakLocked solo se activa cuando toda la fase está cerrada).
   const tieLocked = (tiebreakLocked != null) ? tiebreakLocked : locked;
@@ -191,7 +225,7 @@ function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, sch
   const officialTeamsMatch = hasOfficial && sameKOTeams(predMatch, officialMatch);
   const officialHomeT = hasOfficial && officialMatch.home ? KT2[officialMatch.home] : null;
   const officialAwayT = hasOfficial && officialMatch.away ? KT2[officialMatch.away] : null;
-  const matchPoints = officialTeamsMatch ? scoreKOMatchCard(predMatch, officialMatch) : 0;
+  const matchPoints = officialTeamsMatch ? scoreKOMatchCard(predMatch, officialMatch) * (multiplier || 1) : 0;
 
   if (!home && !away) {
     return (
@@ -294,7 +328,7 @@ function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, sch
 /* ────────────────────────────────────────────────────────────────
    BracketRound — columna de partidos para una ronda
    ──────────────────────────────────────────────────────────────── */
-function BracketRound({ title, sub, matches, officialMatches, round, locked, onScoreChange, isMatchClosed }) {
+function BracketRound({ title, sub, matches, officialMatches, mode, round, locked, onScoreChange, isMatchClosed }) {
   return (
     <div className="br-round">
       <div className="br-round-head">
@@ -312,6 +346,7 @@ function BracketRound({ title, sub, matches, officialMatches, round, locked, onS
               winner={m.winner}
               officialMatch={(officialMatches || [])[i]}
               schedule={getKOSchedule(round, i)}
+              multiplier={getKOMatchMultiplier(mode, round)}
               matchLabel={"P" + (i + 1)}
               locked={locked || !!(isMatchClosed && isMatchClosed(round, i))}
               tiebreakLocked={locked}
@@ -327,7 +362,7 @@ function BracketRound({ title, sub, matches, officialMatches, round, locked, onS
 /* ────────────────────────────────────────────────────────────────
    BracketView — bracket completo con todas las rondas
    ──────────────────────────────────────────────────────────────── */
-function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, locked, phase2Open, isMatchClosed }) {
+function BracketView({ r16Pairs, koScores, officialKoScores, mode, onScoreChange, locked, phase2Open, isMatchClosed }) {
   // Siempre mostrar 16 slots — rellenar con vacíos si el admin aún no configuró los cruces
   const rawPairs = r16Pairs || [];
   const fullPairs = Array.from({ length: 16 }, function(_, i) {
@@ -335,9 +370,12 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
   });
   const pairsReady = rawPairs.filter(function(p) { return p && p.home && p.away; }).length;
   koScores = koScores || {};
+  mode = mode === "progressive" ? "progressive" : "predictive";
 
-  const bracket = buildBracket(fullPairs, koScores, true);
-  const officialBracket = officialKoScores ? buildBracket(fullPairs, officialKoScores, false) : null;
+  const officialBracket = buildBracket(fullPairs, officialKoScores || {}, false);
+  const bracket = mode === "progressive"
+    ? withPredictedScores(officialBracket, koScores)
+    : buildBracket(fullPairs, koScores, true);
 
   // Columna final: Final + 3er lugar
   const finMatch = bracket.fin;
@@ -359,6 +397,11 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
           🔒 <b>Bracket listo.</b> El admin abrirá la Fase 2 cuando empiece la eliminatoria para que puedas llenar los marcadores.
         </div>
       )}
+      {pairsReady === 16 && mode === "progressive" && (
+        <div className="bhint live" style={{ marginBottom: 16 }}>
+          🧭 <b>Modo llave real progresiva.</b> Los cruces se actualizan con los equipos reales; cada marcador se puede cambiar hasta que inicia ese partido.
+        </div>
+      )}
     <div className="br-scroll">
       <div className="br-flow">
         <BracketRound
@@ -366,6 +409,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
           sub={"16 partidos"}
           matches={bracket.r16}
           officialMatches={officialBracket ? officialBracket.r16 : null}
+          mode={mode}
           round="r16"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -376,6 +420,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
           sub={"8 partidos"}
           matches={bracket.qf}
           officialMatches={officialBracket ? officialBracket.qf : null}
+          mode={mode}
           round="qf"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -386,6 +431,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
           sub={"4 partidos"}
           matches={bracket.sf}
           officialMatches={officialBracket ? officialBracket.sf : null}
+          mode={mode}
           round="sf"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -396,6 +442,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
           sub={"2 partidos"}
           matches={bracket.semis}
           officialMatches={officialBracket ? officialBracket.semis : null}
+          mode={mode}
           round="semis"
           locked={locked}
           onScoreChange={onScoreChange}
@@ -416,6 +463,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               winner={finMatch.winner}
               officialMatch={officialFinMatch}
               schedule={getKOSchedule("fin", 0)}
+              multiplier={getKOMatchMultiplier(mode, "fin")}
               matchLabel="Final"
               locked={locked || !!(isMatchClosed && isMatchClosed('fin', 0))}
               tiebreakLocked={locked}
@@ -428,6 +476,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               winner={thirdMatch.winner}
               officialMatch={officialThirdMatch}
               schedule={getKOSchedule("third", 0)}
+              multiplier={getKOMatchMultiplier(mode, "third")}
               matchLabel="3.er lugar"
               locked={locked || !!(isMatchClosed && isMatchClosed('third', 0))}
               tiebreakLocked={locked}

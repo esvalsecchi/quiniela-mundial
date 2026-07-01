@@ -95,6 +95,7 @@ function BracketPairsSetup({ bracketPairs, onSetBracketPairs }) {
 function AdminPanel(props) {
   const { official, pickGroup, toggleThird, setScore, koToggle, koSingle, offPool,
           lockMode, lockedNow, onSetLock, phase2Open, onSetPhase2, onSyncScores, onClear, onExit,
+          knockoutMode, onSetKnockoutMode,
           bracketPairs, onSetBracketPairs, officialKoScores, onSetBracketScoreOff, onSyncTournament } = props;
   const { useState } = React;
   const [sub, setSub] = useState("scores");
@@ -156,6 +157,7 @@ function AdminPanel(props) {
     { v: false, label: "Abierto" },
     { v: true, label: "Cerrado" },
   ];
+  const koMode = knockoutMode === "progressive" ? "progressive" : "predictive";
 
   return (
     <div>
@@ -182,6 +184,17 @@ function AdminPanel(props) {
           <span style={{ marginLeft: "auto", display: "inline-flex", gap: 6 }}>
             <button className={"btn" + (!phase2Open ? " solid" : "")} onClick={() => onSetPhase2(false)}>Cerrar</button>
             <button className={"btn" + (phase2Open ? " solid" : "")} onClick={() => onSetPhase2(true)}>Abrir Fase 2</button>
+          </span>
+        </div>
+      )}
+
+      {onSetKnockoutMode && (
+        <div className="lockbar live">
+          <b>Modo de Eliminatoria:</b>
+          <span>{koMode === "progressive" ? "Opción 2 · llave real progresiva" : "Opción 1 · llave predictiva"}</span>
+          <span style={{ marginLeft: "auto", display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+            <button className={"btn" + (koMode === "predictive" ? " solid" : "")} onClick={() => onSetKnockoutMode("predictive")}>Opción 1</button>
+            <button className={"btn" + (koMode === "progressive" ? " solid" : "")} onClick={() => onSetKnockoutMode("progressive")}>Opción 2</button>
           </span>
         </div>
       )}

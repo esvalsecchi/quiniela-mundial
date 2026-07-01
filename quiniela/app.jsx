@@ -149,6 +149,45 @@ function configWithPhase2ForGroup(config, groupId, value) {
     updatedAt: new Date().toISOString(),
   };
 }
+function knockoutModeForGroup(config, groupId) {
+  config = asRecord(config);
+  groupId = slugify(groupId || (QM && QM.DEFAULT_GROUP_ID) || "hogar");
+  const byGroup = asRecord(config.knockoutModeByGroup);
+  const value = byGroup[groupId] || config.knockoutMode || QM.CONFIG.knockoutMode;
+  return value === "progressive" ? "progressive" : "predictive";
+}
+function configWithKnockoutModeForGroup(config, groupId, mode) {
+  config = asRecord(config);
+  groupId = slugify(groupId || (QM && QM.DEFAULT_GROUP_ID) || "hogar");
+  const cleanMode = mode === "progressive" ? "progressive" : "predictive";
+  return {
+    ...config,
+    groupId,
+    knockoutMode: cleanMode,
+    knockoutModeByGroup: {
+      ...asRecord(config.knockoutModeByGroup),
+      [groupId]: cleanMode,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+function rulesForKnockoutMode(mode) {
+  const base = (QM.RULES || []).filter((sec) => sec.section !== "Eliminatoria");
+  const predictive = [
+    { pts: "+1", label: "Resultado correcto de cada partido en tu llave predictiva" },
+    { pts: "+3", label: "Marcador exacto de cada partido (en vez del +1)" },
+    { pts: "—", label: "En rondas futuras, puntúa solo si el cruce predicho coincide con el cruce real" },
+  ];
+  const progressive = [
+    { pts: "+1 / +3", label: "Resultado correcto o marcador exacto de cada partido real" },
+    { pts: "x1", label: "Dieciseisavos" },
+    { pts: "x2", label: "Octavos" },
+    { pts: "x4", label: "Cuartos" },
+    { pts: "x8", label: "Semifinales" },
+    { pts: "x16", label: "Final y 3.er lugar" },
+  ];
+  return base.concat([{ section: "Eliminatoria", items: mode === "progressive" ? progressive : predictive }]);
+}
 function applyTournamentState(cur, state) {
   cur = cur || {};
   state = state || {};
@@ -372,6 +411,9 @@ function App() {
   const [pid, setPid] = useState(null);
   const [tab, setTab] = useState("scores");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPinOpen, setAdminPinOpen] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
+  const [adminPinError, setAdminPinError] = useState("");
   const [now, setNow] = useState(Date.now());
   const autoSyncingRef = useRef(false);
 
@@ -436,6 +478,8 @@ function App() {
   const lockMode = config && config.locked !== undefined ? config.locked : QM.CONFIG.locked;
   const lockedNow = lockMode === true;
   const phase2Open = phase2OpenForGroup(config, group && group.id);
+  const knockoutMode = knockoutModeForGroup(config, group && group.id);
+  const rules = useMemo(() => rulesForKnockoutMode(knockoutMode), [knockoutMode]);
   const groupName = (meta && meta.name) || (group && group.name) || QM.META.brand;
 
   function hasOfficialScore(mid) {
@@ -465,7 +509,8 @@ function App() {
     const byKickoff = matchSchedule && matchSchedule.kickoffAt
       ? now >= Date.parse(matchSchedule.kickoffAt)
       : false;
-    return lockedNow || QMScore.hasScore(v) || byKickoff;
+    const byOfficial = knockoutMode === "predictive" && QMScore.hasScore(v);
+    return lockedNow || byOfficial || byKickoff;
   }
 
   // Auto-fill group positions whenever this player's data changes (covers Firebase load + score edits)
@@ -556,9 +601,9 @@ function App() {
         ? cur.koScores[round]
         : cur.koScores[round][matchIdx];
       if (currentScore && QMScore.hasScore(currentScore) && +currentScore.h !== +currentScore.a) delete currentScore.w;
-      // Derive ko2 from bracket (pronóstico: empate avanza local por defecto)
+      // Derive ko2 from the player's bracket only in predictive mode.
       const r16Pairs = (official.bracketPairs || {}).r16 || [];
-      if (window.buildBracket && r16Pairs.length > 0) {
+      if (knockoutMode === "predictive" && window.buildBracket && r16Pairs.length > 0) {
         const bracket = window.buildBracket(r16Pairs, cur.koScores, true);
         if (bracket) cur.ko2 = window.deriveKO(bracket);
       }
@@ -697,6 +742,11 @@ function App() {
     setConfig(next);
     QMCloud.saveConfig(next);
   }
+  function setKnockoutMode(mode) {
+    const next = configWithKnockoutModeForGroup(config, group && group.id, mode);
+    setConfig(next);
+    QMCloud.saveConfig(next);
+  }
   function syncOfficialScores(newScores) {
     updateOfficial((p) => {
       Object.entries(newScores).forEach(([mid, score]) => {
@@ -777,11 +827,21 @@ function App() {
   }, [group && group.id, meta !== null, config && config.lastAutoSyncAt, official]);
 
   function loginAdmin() {
-    const pin = prompt("PIN de administrador:");
-    if (pin == null) return;
+    setAdminPinOpen(true);
+    setAdminPinError("");
+  }
+  function submitAdminPin(e) {
+    e && e.preventDefault();
     const real = (window.QM_FIREBASE && window.QM_FIREBASE.ADMIN_PIN) || "hogar2026";
-    if (pin === real) { setIsAdmin(true); setTab("admin"); }
-    else alert("PIN incorrecto.");
+    if (adminPin === real) {
+      setIsAdmin(true);
+      setAdminPinOpen(false);
+      setAdminPin("");
+      setAdminPinError("");
+      setTab("admin");
+    } else {
+      setAdminPinError("PIN incorrecto.");
+    }
   }
 
   /* ---------- derivados ---------- */
@@ -793,7 +853,7 @@ function App() {
   const scoresDone = QM.MATCHES.filter((m) => QMScore.hasScore((pred.scores || {})[m.id])).length;
   const closedScores = QM.MATCHES.filter((m) => matchClosed(m.id)).length;
 
-  const standings = useMemo(() => QMScore.standings(all, official, players), [all, official, players]);
+  const standings = useMemo(() => QMScore.standings(all, official, players, knockoutMode), [all, official, players, knockoutMode]);
   const hasResults = QMScore.hasOfficialResults(official);
   const playerHasChamp = (id) => {
     const p = all[id];
@@ -874,6 +934,21 @@ function App() {
       </div>
 
       <div className="wrap">
+        {adminPinOpen && !isAdmin && (
+          <form className="admin-login no-print" onSubmit={submitAdminPin}>
+            <label htmlFor="admin-pin">PIN de administrador</label>
+            <input
+              id="admin-pin"
+              type="password"
+              value={adminPin}
+              onChange={(e) => { setAdminPin(e.target.value); setAdminPinError(""); }}
+              autoFocus
+            />
+            <button className="btn solid" type="submit">Entrar</button>
+            <button className="btn" type="button" onClick={() => { setAdminPinOpen(false); setAdminPin(""); setAdminPinError(""); }}>Cancelar</button>
+            {adminPinError && <span className="admin-login-error">{adminPinError}</span>}
+          </form>
+        )}
         {!players.length && (
           <section className="section">
             <div className="empty-panel">
@@ -943,13 +1018,16 @@ function App() {
         <section className="section" style={{ display: tab === "ko" ? "block" : "none" }}>
           <div className="section-head">
             <h2>Camino al Título</h2>
-            <p>Predice el <b>marcador</b> de cada partido. El ganador avanza automáticamente a la siguiente ronda. Los puntos se acumulan con la Fase de Grupos.</p>
+            <p>{knockoutMode === "progressive"
+              ? "Predice el marcador de cada cruce real. Las rondas se actualizan con los equipos oficiales y cada partido cierra al iniciar."
+              : "Predice el marcador de cada partido. El ganador avanza automáticamente a la siguiente ronda. Los puntos se acumulan con la Fase de Grupos."}</p>
           </div>
           {tab === "ko" && (
             <BracketView
               r16Pairs={(official.bracketPairs || {}).r16 || []}
               koScores={pred.koScores || {}}
               officialKoScores={official.koScores || {}}
+              mode={knockoutMode}
               onScoreChange={phase2Open ? setBracketScore : null}
               locked={!phase2Open}
               phase2Open={phase2Open}
@@ -975,7 +1053,7 @@ function App() {
           </div>
           <div className="rules-grid">
             <div>
-              {QM.RULES.map((sec, i) => (
+              {rules.map((sec, i) => (
                 <div className="panel" key={i} style={{ marginBottom: 16 }}>
                   <h3>{sec.section}</h3>
                   {sec.items.map((r, j) => (<div className="rule" key={j}><span className="pts">{r.pts}</span><span className="rl">{r.label}</span></div>))}
@@ -988,7 +1066,7 @@ function App() {
                 <li>Elige tu nombre arriba. Cada quien tiene su <b>propia quiniela</b>.</li>
                 <li>En <b>Grupos</b>: marca 1.º, 2.º, 3.º y elige los 8 mejores terceros.</li>
                 <li>En <b>Marcadores</b>: pronostica los 72 partidos de la fase de grupos.</li>
-                <li>En <b>Camino al Título</b>: arma la eliminatoria hasta el campeón.</li>
+                <li>En <b>Camino al Título</b>: {knockoutMode === "progressive" ? "pronostica cada cruce real a medida que queda definido." : "arma la eliminatoria hasta el campeón."}</li>
                 <li>Cada marcador se cierra al iniciar su partido; la <b>Tabla</b> suma con resultados oficiales.</li>
               </ol>
             </div>
@@ -1003,6 +1081,7 @@ function App() {
                 setScore={setScoreOff} koToggle={koToggleOff} koSingle={koSingleOff} offPool={offPool}
                 lockMode={lockMode} lockedNow={lockedNow} onSetLock={setLock}
                 phase2Open={phase2Open} onSetPhase2={setPhase2}
+                knockoutMode={knockoutMode} onSetKnockoutMode={setKnockoutMode}
                 onSyncScores={syncOfficialScores}
                 onSyncTournament={syncOfficialTournament}
                 onClear={clearOfficial} onExit={() => { setIsAdmin(false); setTab("table"); }}
