@@ -536,7 +536,11 @@ function App() {
   const ko2Single = (key, code) => updatePlayerKo2((p) => { p.ko2[key] = p.ko2[key] === code ? null : code; });
 
   function setBracketScore(round, matchIdx, k, val) {
-    if (!phase2Open || koMatchClosed(round, matchIdx)) return;
+    if (!phase2Open) return;
+    // Tras el cierre del partido, el MARCADOR queda bloqueado, pero el ganador del
+    // desempate ('w') se puede elegir igual — así un empate de un juego ya jugado
+    // permite escoger quién avanza a la siguiente ronda.
+    if (k !== 'w' && koMatchClosed(round, matchIdx)) return;
     setAll((prev) => {
       const cur = JSON.parse(JSON.stringify(withDefaults(prev[pid])));
       if (!cur.koScores) cur.koScores = {};

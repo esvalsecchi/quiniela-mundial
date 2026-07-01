@@ -41,46 +41,49 @@ function buildBracket(r16Pairs, koScores, defaultTieToHome) {
     return { home: home || null, away: away || null, score: score || null, winner: winnerOf(home, away, score) };
   }
 
-  // R16 — 16 partidos definidos por el admin
+  // Estructura real del cuadro (por índice). Si falta, cae al emparejamiento consecutivo.
+  const B = (window.QM && window.QM.KO_BRACKET) || {};
+  function feed(prev, pairIdx) {
+    return prev[pairIdx] ? prev[pairIdx].winner : null;
+  }
+  function pairsFor(round, i) {
+    return (B[round] && B[round][i]) ? B[round][i] : [i * 2, i * 2 + 1];
+  }
+
+  // R16 (Dieciseisavos) — 16 partidos definidos por el admin
   const r16Scores = koScores.r16 || [];
   const r16 = r16Pairs.map(function(pair, i) {
     return makeMatch(pair ? pair.home : null, pair ? pair.away : null, r16Scores[i] || null);
   });
 
-  // QF — 8 partidos: ganadores de los pares r16[0]vs[1], r16[2]vs[3], etc.
+  // QF (Octavos) — 8 partidos: ganadores de dos Dieciseisavos según la estructura real
   const qfScores = koScores.qf || [];
   const qf = [];
   for (var qi = 0; qi < 8; qi++) {
-    var home = r16[qi * 2] ? r16[qi * 2].winner : null;
-    var away = r16[qi * 2 + 1] ? r16[qi * 2 + 1].winner : null;
-    qf.push(makeMatch(home, away, qfScores[qi] || null));
+    var qp = pairsFor("qf", qi);
+    qf.push(makeMatch(feed(r16, qp[0]), feed(r16, qp[1]), qfScores[qi] || null));
   }
 
-  // SF — 4 partidos
+  // SF (Cuartos) — 4 partidos
   const sfScores = koScores.sf || [];
   const sf = [];
   for (var si = 0; si < 4; si++) {
-    var home = qf[si * 2] ? qf[si * 2].winner : null;
-    var away = qf[si * 2 + 1] ? qf[si * 2 + 1].winner : null;
-    sf.push(makeMatch(home, away, sfScores[si] || null));
+    var sp = pairsFor("sf", si);
+    sf.push(makeMatch(feed(qf, sp[0]), feed(qf, sp[1]), sfScores[si] || null));
   }
 
-  // Semis — 2 partidos
+  // Semis (Semifinales) — 2 partidos
   const semisScores = koScores.semis || [];
   const semis = [];
   for (var mi = 0; mi < 2; mi++) {
-    var home = sf[mi * 2] ? sf[mi * 2].winner : null;
-    var away = sf[mi * 2 + 1] ? sf[mi * 2 + 1].winner : null;
-    semis.push(makeMatch(home, away, semisScores[mi] || null));
+    var mp = pairsFor("semis", mi);
+    semis.push(makeMatch(feed(sf, mp[0]), feed(sf, mp[1]), semisScores[mi] || null));
   }
 
-  // Final
+  // Final — los 2 ganadores de Semifinales
+  const finPair = B.fin || [0, 1];
   const finScore = koScores.fin || null;
-  const fin = makeMatch(
-    semis[0] ? semis[0].winner : null,
-    semis[1] ? semis[1].winner : null,
-    finScore
-  );
+  const fin = makeMatch(feed(semis, finPair[0]), feed(semis, finPair[1]), finScore);
 
   // Tercer lugar — los dos perdedores de semis
   function getLoser(match) {
@@ -173,7 +176,10 @@ function scoreKOMatchCard(predMatch, officialMatch) {
 /* ────────────────────────────────────────────────────────────────
    KOMatchCard — muestra un partido del bracket con inputs
    ──────────────────────────────────────────────────────────────── */
-function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, schedule, matchLabel, locked, onChange }) {
+function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, schedule, matchLabel, locked, tiebreakLocked, onChange }) {
+  // El marcador se bloquea al cerrar el partido, pero el desempate se puede seguir
+  // eligiendo (tiebreakLocked solo se activa cuando toda la fase está cerrada).
+  const tieLocked = (tiebreakLocked != null) ? tiebreakLocked : locked;
   // El ganador viene precalculado del bracket (puede incluir el default de empate).
   const winner = (winnerProp != null) ? winnerProp : getKOWinner(home, away, score);
   const predMatch = { home: home, away: away, score: score || null, winner: winner };
@@ -257,14 +263,14 @@ function KOMatchCard({ home, away, score, winner: winnerProp, officialMatch, sch
           <button
             type="button"
             className={"ko-mc-tiebtn" + (winner === home ? (explicitTieWinner ? " on" : " on is-default") : "")}
-            disabled={locked || !onChange}
+            disabled={tieLocked || !onChange}
             onClick={function() { if (onChange) onChange('w', home); }}>
             {homeT ? homeT.flag : ""} {homeT ? homeT.name : home}
           </button>
           <button
             type="button"
             className={"ko-mc-tiebtn" + (winner === away ? (explicitTieWinner ? " on" : " on is-default") : "")}
-            disabled={locked || !onChange}
+            disabled={tieLocked || !onChange}
             onClick={function() { if (onChange) onChange('w', away); }}>
             {awayT ? awayT.flag : ""} {awayT ? awayT.name : away}
           </button>
@@ -308,6 +314,7 @@ function BracketRound({ title, sub, matches, officialMatches, round, locked, onS
               schedule={getKOSchedule(round, i)}
               matchLabel={"P" + (i + 1)}
               locked={locked || !!(isMatchClosed && isMatchClosed(round, i))}
+              tiebreakLocked={locked}
               onChange={function(k, val) { if (onScoreChange) onScoreChange(round, i, k, val); }}
             />
           );
@@ -411,6 +418,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               schedule={getKOSchedule("fin", 0)}
               matchLabel="Final"
               locked={locked || !!(isMatchClosed && isMatchClosed('fin', 0))}
+              tiebreakLocked={locked}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('fin', 0, k, val); }}
             />
             <KOMatchCard
@@ -422,6 +430,7 @@ function BracketView({ r16Pairs, koScores, officialKoScores, onScoreChange, lock
               schedule={getKOSchedule("third", 0)}
               matchLabel="3.er lugar"
               locked={locked || !!(isMatchClosed && isMatchClosed('third', 0))}
+              tiebreakLocked={locked}
               onChange={function(k, val) { if (onScoreChange) onScoreChange('third', 0, k, val); }}
             />
             {champ && (

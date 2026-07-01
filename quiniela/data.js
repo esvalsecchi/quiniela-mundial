@@ -284,10 +284,24 @@
   // Capacidades de cada ronda eliminatoria (cuántos equipos avanzan)
   const KO_CAPS = { r16: 16, qf: 8, sf: 4, fin: 2 };
 
+  // Estructura REAL del cuadro del Mundial 2026 (según FIFA/ESPN). NO es consecutiva:
+  // cada partido de una ronda toma los ganadores de dos partidos de la ronda anterior,
+  // por índice (los índices son el orden por fecha = número de partido oficial).
+  //   qf    = Octavos  (cada uno = 2 ganadores de Dieciseisavos r16)
+  //   sf    = Cuartos  (cada uno = 2 ganadores de Octavos qf)
+  //   semis = Semifinales (cada una = 2 ganadores de Cuartos sf)
+  //   fin   = Final    (los 2 ganadores de Semifinales)
+  const KO_BRACKET = {
+    qf:    [[0, 3], [2, 5], [1, 4], [6, 7], [10, 11], [8, 9], [13, 15], [12, 14]],
+    sf:    [[0, 1], [4, 5], [2, 3], [6, 7]],
+    semis: [[0, 1], [2, 3]],
+    fin:   [0, 1],
+  };
+
   const DEFAULT_GROUP_ID = "hogar";
 
   window.QM = {
     T, GROUPS, MATCHES, PLAYERS, DEFAULT_PLAYERS, PLAYER_COLORS,
-    RULES, POINTS, KO_CAPS, KO_SCHEDULE, META, CONFIG, DEFAULT_GROUP_ID,
+    RULES, POINTS, KO_CAPS, KO_SCHEDULE, KO_BRACKET, META, CONFIG, DEFAULT_GROUP_ID,
   };
 })();
